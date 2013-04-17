@@ -3,6 +3,10 @@ Upstream-Name: ceilometer
 Upstream-Contact: Julien Danjou <acid@debian.org>, 
 Source: https://github.com/stackforge/ceilometer
 
+Files: debian/*.upstart.in
+Copyright: (c) 2012-2013, Canonical Ltd
+License: Apache-2
+
 Files: debian/*
 Copyright: 2012 Thomas Goirand <zigo@debian.org>
 License: Apache-2
