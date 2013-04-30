@@ -83,6 +83,7 @@ setuptools.setup(
              'bin/ceilometer-api',
              'bin/ceilometer-collector',
              'bin/ceilometer-dbsync',
+             'bin/ceilometer-alarm-dbsync',
              'bin/ceilometer-alarm'],
 
     py_modules=[],
