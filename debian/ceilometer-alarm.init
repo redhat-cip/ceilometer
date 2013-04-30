@@ -14,7 +14,7 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
 DESC="Ceilometer Alerting"
 SYS_NAME=ceilometer
-NAME=ceilometer-api
+NAME=ceilometer-alarm
 DAEMON=/usr/bin/${NAME}
 DAEMON_ARGS="--log-dir=/var/log/ceilometer"
 
