@@ -1,3 +1,9 @@
+ceilometer (2013.1alerting1-1enovance1) UNRELEASED; urgency=low
+
+  * Merge alerting review 
+
+ -- Mehdi Abaakouk <sileht@sileht.net>  Tue, 30 Apr 2013 10:24:22 +0200
+
 ceilometer (2013.1-1) experimental; urgency=low
 
   * Initial release (Closes: #693406).
