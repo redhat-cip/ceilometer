@@ -1,6 +1,7 @@
 include AUTHORS
 include ChangeLog
 include ceilometer/storage/sqlalchemy/migrate_repo/migrate.cfg
+include ceilometer/alarm/storage/sqlalchemy/migrate_repo/migrate.cfg
 exclude .gitignore
 exclude .gitreview
 graft tests
