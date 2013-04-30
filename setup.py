@@ -26,7 +26,7 @@ from ceilometer.openstack.common import setup as common_setup
 requires = common_setup.parse_requirements(['tools/pip-requires'])
 depend_links = common_setup.parse_dependency_links(['tools/pip-requires'])
 project = 'ceilometer'
-version = common_setup.get_version(project, '2013.1')
+version = common_setup.get_version(project, '2013.2')
 
 url_base = 'http://tarballs.openstack.org/ceilometer/ceilometer-%s.tar.gz'
 
@@ -66,7 +66,8 @@ setuptools.setup(
     packages=setuptools.find_packages(exclude=['bin',
                                                'tests',
                                                'tests.*',
-                                               '*.tests']),
+                                               '*.tests',
+                                               'nova_tests']),
     cmdclass=common_setup.get_cmdclass(),
     package_data={
         "ceilometer":
@@ -81,7 +82,8 @@ setuptools.setup(
              'bin/ceilometer-agent-central',
              'bin/ceilometer-api',
              'bin/ceilometer-collector',
-             'bin/ceilometer-dbsync'],
+             'bin/ceilometer-dbsync',
+             'bin/ceilometer-alarm'],
 
     py_modules=[],
 
@@ -124,13 +126,17 @@ setuptools.setup(
     objectstore = ceilometer.objectstore.swift:SwiftPollster
     kwapi = ceilometer.energy.kwapi:KwapiPollster
 
+    [ceilometer.alarm.storage]
+    mysql = ceilometer.alarm.storage.impl_sqlalchemy:SQLAlchemyStorage
+    postgresql = ceilometer.alarm.storage.impl_sqlalchemy:SQLAlchemyStorage
+    sqlite = ceilometer.alarm.storage.impl_sqlalchemy:SQLAlchemyStorage
+
     [ceilometer.storage]
     log = ceilometer.storage.impl_log:LogStorage
     mongodb = ceilometer.storage.impl_mongodb:MongoDBStorage
     mysql = ceilometer.storage.impl_sqlalchemy:SQLAlchemyStorage
     postgresql = ceilometer.storage.impl_sqlalchemy:SQLAlchemyStorage
     sqlite = ceilometer.storage.impl_sqlalchemy:SQLAlchemyStorage
-    test = ceilometer.storage.impl_test:TestDBStorage
     hbase = ceilometer.storage.impl_hbase:HBaseStorage
 
     [ceilometer.compute.virt]

@@ -1,9 +1,8 @@
 # -*- encoding: utf-8 -*-
 #
-# Copyright © 2012 New Dream Network, LLC (DreamHost)
+# Copyright © 2013 New Dream Network, LLC (DreamHost)
 #
-# Author: Julien Danjou <julien@danjou.info>
-#         Doug Hellmann <doug.hellmann@dreamhost.com>
+# Author: Doug Hellmann <doug.hellmann@dreamhost.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -16,14 +15,6 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations
 # under the License.
-
-__all__ = [
-    'notify',
-    'DeletedInstanceStatsGatherer',
-    'initialize_gatherer',
-    'instance_info_source',
-    '_gatherer',  # for tests to mock
-]
 
 import sys
 
@@ -44,6 +35,8 @@ from oslo.config import cfg
 
 from ceilometer import extension_manager
 from ceilometer.compute.virt import inspector
+from ceilometer.openstack.common.gettextutils import _
+
 
 # This module runs inside the nova compute
 # agent, which only configures the "nova" logger.
@@ -86,10 +79,10 @@ def initialize_gatherer(gatherer=None):
     """
     global _gatherer
     if gatherer is not None:
-        LOG.debug('using provided stats gatherer %r', gatherer)
+        LOG.debug(_('using provided stats gatherer %r'), gatherer)
         _gatherer = gatherer
     if _gatherer is None:
-        LOG.debug('making a new stats gatherer')
+        LOG.debug(_('making a new stats gatherer'))
         mgr = extension_manager.ActivatedExtensionManager(
             namespace='ceilometer.poll.compute',
             disabled_names=cfg.CONF.disabled_compute_pollsters,
@@ -109,7 +102,7 @@ class Instance(object):
     def __init__(self, info):
         for k, v in info.iteritems():
             setattr(self, k, v)
-        LOG.debug('INFO %r', info)
+        LOG.debug(_('INFO %r'), info)
 
     @property
     def tenant_id(self):
@@ -133,13 +126,13 @@ class Instance(object):
 
 def notify(context, message):
     if message['event_type'] != 'compute.instance.delete.start':
-        LOG.debug('ignoring %s', message['event_type'])
+        LOG.debug(_('ignoring %s'), message['event_type'])
         return
-    LOG.info('processing %s', message['event_type'])
+    LOG.info(_('processing %s'), message['event_type'])
     gatherer = initialize_gatherer()
 
     instance_id = message['payload']['instance_id']
-    LOG.debug('polling final stats for %r', instance_id)
+    LOG.debug(_('polling final stats for %r'), instance_id)
 
     # Ask for the instance details
     instance_ref = instance_info_source.instance_get_by_uuid(

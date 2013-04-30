@@ -124,21 +124,6 @@ class Connection(base.Connection):
         """
         return []
 
-    def get_volume_sum(self, event_filter):
-        """Return the sum of the volume field for the samples
-        described by the query parameters.
-        """
-
-    def get_volume_max(self, event_filter):
-        """Return the maximum of the volume field for the samples
-        described by the query parameters.
-        """
-
-    def get_event_interval(self, event_filter):
-        """Return the min and max timestamp for samples
-        matching the event_filter.
-        """
-
     def get_meter_statistics(self, event_filter, period=None):
         """Return a dictionary containing meter statistics.
         described by the query parameters.
