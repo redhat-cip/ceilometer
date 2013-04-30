@@ -585,10 +585,10 @@ class Alarm(_Base):
     enabled = bool
     "This alarm is enabled?"
 
-    evaluation_period = float
+    evaluation_period = int
     "The number of period to evaluate with the threshold"
 
-    aggregate_period = float
+    aggregate_period = int
     "The time range of a aggregate of metric to evaluate with the threshold"
 
     timestamp = datetime.datetime
@@ -632,12 +632,12 @@ class Alarm(_Base):
                    statistic="average",
                    user_id="c96c887c216949acbdfbd8b494863567",
                    project_id="c96c887c216949acbdfbd8b494863567",
-                   evaluation_period=240.0,
-                   aggregate_period=2,
+                   evaluation_period=2,
+                   aggregate_period=240,
                    enabled=True,
-                   timestamp="2013-04-08T05:17:13.698331",
-                   state="ok",
-                   state_timestamp="2013-04-08T05:17:13.698331",
+                   timestamp=datetime.datetime.utcnow(),
+                   state=0,
+                   state_timestamp=datetime.datetime.utcnow(),
                    ok_actions=["http://site:8000/ok"],
                    alarm_actions=["http://site:8000/alarm"],
                    insufficient_data_actions=["http://site:8000/nodata"],
