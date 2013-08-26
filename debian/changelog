@@ -1,4 +1,11 @@
-ceilometer (2013.1alerting1-1enovance1) UNRELEASED; urgency=low
+ceilometer (2013.1alerting1-1enovance1ubuntu1) precise; urgency=low
+
+  * Ubuntu portage
+  * Add fix for trailing slash endpoint in swift middleware
+
+ -- Mehdi Abaakouk <sileht@sileht.net>  Mon, 26 Aug 2013 12:28:35 +0000
+
+ceilometer (2013.1alerting1-1enovance1) unstable; urgency=low
 
   * Merge alerting review 
 

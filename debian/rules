@@ -5,6 +5,7 @@
 include /usr/share/openstack-pkg-tools/pkgos.make
 
 export OSLO_PACKAGE_VERSION=$(VERSION)
+export UPSTREAM_GIT=https://github.com/enovance/ceilometer.git
 
 %:
 	dh $@  --with python2
