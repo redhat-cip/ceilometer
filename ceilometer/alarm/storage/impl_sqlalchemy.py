@@ -185,7 +185,7 @@ class Connection(base.Connection):
         :param project: Optional ID for project that owns the resource.
         :param enabled: Optional boolean to list disable alarm
         """
-        query = model_query(Alarm.id, session=self.session)
+        query = model_query(Alarm, session=self.session)
 
         if name is not None:
             query = query.filter(Alarm.name == name)
@@ -196,7 +196,7 @@ class Connection(base.Connection):
         if project_id is not None:
             query = query.filter(Alarm.project_id == project_id)
 
-        return (x[0] for x in query.all())
+        return (self._row_to_alarm_model(x) for x in query.all())
 
     def _raw_alarm_get(self, alarm_id):
         """Return row alarm information.
