@@ -117,7 +117,7 @@ class AlarmService(service.PeriodicService):
 
             now = timeutils.utcnow()
             incomplete_timestamp = now - datetime.timedelta(
-                seconds=(alarm.aggregate_period - 2)
+                seconds=(alarm.aggregate_period - 30)
             )
 
             if aggregates and aggregates[0].timestamp >= incomplete_timestamp:
