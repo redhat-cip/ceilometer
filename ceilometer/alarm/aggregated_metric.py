@@ -49,7 +49,7 @@ class AggregatedMetric(models.Model):
         value = meter['counter_volume']
         if self.sample_count == 0:
             self.sample_count = 1
-            self.minimum = self.minimum = self.sum = self.average = value
+            self.minimum = self.maximum = self.sum = self.average = value
             self.unit = meter['counter_unit']
         else:
             self.sample_count += 1
