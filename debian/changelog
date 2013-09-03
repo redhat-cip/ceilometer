@@ -1,4 +1,10 @@
-ceilometer (2013.1alerting1-1enovance1) UNRELEASED; urgency=low
+ceilometer (2013.1alerting2-1enovance1) UNRELEASED; urgency=low
+
+  * Fix alarming to branch master (84b699d553a36cada7f00d846a31b4aa2e46ca9e)
+
+ -- Mehdi Abaakouk <sileht@sileht.net>  Tue, 03 Sep 2013 14:53:47 +0200
+
+ceilometer (2013.1alerting1-1enovance1) sid; urgency=low
 
   * Merge alerting review 
 
