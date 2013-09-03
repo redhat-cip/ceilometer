@@ -93,6 +93,8 @@ class TestAlarmService(tests_base.TestCase):
         expected['timestamp'] = \
             datetime.datetime(2012, 9, 30, 23, 31, 50, 262000)
 
+        self.srv._cache_meters = set(['test'])
+        self.srv._cache_alarms = {}
         self.mox.StubOutWithMock(self.srv, '_check_alarms')
         self.srv._check_alarms(expected)
         self.mox.ReplayAll()
@@ -117,15 +119,14 @@ class TestAlarmService(tests_base.TestCase):
         # Mock all db calls
         self.srv.storage_conn = self.mox.CreateMock(base.Connection)
         self.srv.storage_conn.alarm_list(enabled=True).AndReturn(
-            (alarm.id, ))
-        self.srv.storage_conn.alarm_get(alarm.id).AndReturn(alarm)
+            (alarm, ))
 
         self.srv.storage_conn.aggregated_metric_list(alarm.id).AndReturn(
             (4, 3, 2, 1))
 
         aggregated_metrics = [
             {'id': 4, 'sample_count': 1, 'timestamp': now - datetime.timedelta(
-                seconds=(alarm.aggregate_period)), 'average': 1.0},
+                seconds=(alarm.aggregate_period - 4 )), 'average': 1.0},
             {'id': 3, 'sample_count': 1, 'timestamp': now - datetime.timedelta(
                 seconds=(alarm.aggregate_period * 2)), 'average': 1.0},
             {'id': 2, 'sample_count': 1, 'timestamp': now - datetime.timedelta(
@@ -166,8 +167,7 @@ class TestAlarmService(tests_base.TestCase):
         # Mock all db calls
         self.srv.storage_conn = self.mox.CreateMock(base.Connection)
         self.srv.storage_conn.alarm_list(enabled=True).AndReturn(
-            (alarm.id, ))
-        self.srv.storage_conn.alarm_get(alarm.id).AndReturn(alarm)
+            (alarm, ))
 
         self.srv.storage_conn.aggregated_metric_list(alarm.id).AndReturn(
             (4, 3, 2, 1))
@@ -187,7 +187,8 @@ class TestAlarmService(tests_base.TestCase):
                 AggregatedMetric(alarm.id, **a))
 
         self.srv.storage_conn.aggregated_metric_add(
-            mox.IsA(AggregatedMetric))
+            mox.IsA(AggregatedMetric)).AndReturn(
+            AggregatedMetric(alarm.id, **aggregated_metrics[0]))
         self.srv.storage_conn.aggregated_metric_delete(2)
         self.srv.storage_conn.aggregated_metric_delete(1)
 
