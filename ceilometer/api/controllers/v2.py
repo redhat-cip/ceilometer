@@ -771,9 +771,8 @@ class AlarmsController(rest.RestController):
         #FIXME(sileht): not sure its useful to use _query_to_kwargs
         kwargs = _query_to_kwargs(q,
                                   pecan.request.alarm_storage_conn.alarm_list)
-        return [Alarm.from_db_model(
-            pecan.request.alarm_storage_conn.alarm_get(m))
-            for m in pecan.request.alarm_storage_conn.alarm_list(**kwargs)]
+        return [Alarm.from_db_model(m)
+                for m in pecan.request.alarm_storage_conn.alarm_list(**kwargs)]
 
 
 class V2Controller(object):

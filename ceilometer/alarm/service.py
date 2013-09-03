@@ -24,7 +24,6 @@ from ceilometer import service
 from ceilometer.alarm import storage
 from ceilometer.alarm.alarm import Alarm
 from ceilometer.alarm.aggregated_metric import AggregatedMetric
-from ceilometer.collector import meter as meter_api
 from ceilometer.openstack.common import log
 from ceilometer.openstack.common import timeutils
 from ceilometer.openstack.common.rpc import dispatcher as rpc_dispatcher
@@ -55,9 +54,12 @@ class AlarmService(service.PeriodicService):
         pass
 
     def _load_alarm_cache(self):
+        LOG.debug("alarms loading...")
         self._cache_aggregated_metric = {}
-        self._cache_alarms = dict((x, self.storage_conn.alarm_get(x)) for x in
+        self._cache_alarms = dict((x.id, x) for x in
                                   self.storage_conn.alarm_list(enabled=True))
+        self._cache_meters = set(c.counter_name
+                                 for c in self._cache_alarms.values())
         LOG.debug("alarms loaded: %d", len(self._cache_alarms))
 
     def initialize_service_hook(self, service):
@@ -75,6 +77,7 @@ class AlarmService(service.PeriodicService):
 
     def add_or_update_alarm(self, context, data):
         self._cache_alarms[data['id']] = Alarm(**data)
+        self._cache_meters.add(data['counter_name'])
         LOG.debug("alarms loaded: %d", len(self._cache_alarms))
 
     def delete_alarm(self, context, id):
@@ -90,26 +93,19 @@ class AlarmService(service.PeriodicService):
         if not isinstance(data, list):
             data = [data]
 
+        start = timeutils.utcnow()
         for meter in data:
-            #LOG.info('metering data %s for %s @ %s: %s',
-            #         meter['counter_name'],
-            #         meter['resource_id'],
-            #         meter.get('timestamp', 'NO TIMESTAMP'),
-            #         meter['counter_volume'])
-            if meter_api.verify_signature(meter, cfg.CONF.metering_secret):
-                if meter.get('timestamp'):
-                    ts = timeutils.parse_isotime(meter['timestamp'])
-                    meter['timestamp'] = timeutils.normalize_time(ts)
-                self._check_alarms(meter)
-            else:
-                LOG.warning(
-                    'message signature invalid, discarding message: %r',
-                    meter)
+            if meter.get('counter_name') not in self._cache_meters:
+                break
+            if meter.get('timestamp'):
+                ts = timeutils.parse_isotime(meter['timestamp'])
+                meter['timestamp'] = timeutils.normalize_time(ts)
+            self._check_alarms(meter)
+        end = timeutils.utcnow()
+        LOG.debug('%d samples checked against %d alarms in %s' % (
+            len(data), len(self._cache_alarms), end - start))
 
     def _check_alarms(self, meter):
-
-        now = timeutils.utcnow()
-
         for alarm in self._cache_alarms.values():
             if not alarm.match(meter):
                 continue
@@ -119,8 +115,9 @@ class AlarmService(service.PeriodicService):
                 alarm_id=alarm.id
             )
 
+            now = timeutils.utcnow()
             incomplete_timestamp = now - datetime.timedelta(
-                seconds=(alarm.aggregate_period * 1.5)
+                seconds=(alarm.aggregate_period - 2)
             )
 
             if aggregates and aggregates[0].timestamp >= incomplete_timestamp:
@@ -169,6 +166,7 @@ class AlarmService(service.PeriodicService):
             aggregated_metric
 
     def _cache_aggregated_metric_add(self, alarm_id, aggregated_metric):
-        self.storage_conn.aggregated_metric_add(aggregated_metric)
+        aggregated_metric = self.storage_conn.aggregated_metric_add(
+            aggregated_metric)
         self._cache_aggregated_metric[alarm_id][aggregated_metric.id] = \
             aggregated_metric

@@ -32,6 +32,7 @@ from ceilometer.openstack.common import timeutils
 from ceilometer.alarm.storage.sqlalchemy.models import Alarm
 from ceilometer.alarm.storage.sqlalchemy.models import AggregatedMetric
 
+now = timeutils.utcnow()
 
 ALARM_FIXTURE = [
     {'name': 'alarmtest',
@@ -43,7 +44,7 @@ ALARM_FIXTURE = [
      'aggregate_period': 60,
      'matching_metadata': {},
      'enabled': False,
-     'state_timestamp': timeutils.utcnow(),
+     'state_timestamp': now,
      'user_id': None,
      'project_id': None},
     {'name': 'alarmtest',
@@ -55,7 +56,7 @@ ALARM_FIXTURE = [
      'aggregate_period': 60,
      'matching_metadata': {'user_id': '1234567890'},
      'enabled': True,
-     'state_timestamp': timeutils.utcnow(),
+     'state_timestamp': now,
      'user_id': None,
      'project_id': None},
     {'name': 'alarmtest',
@@ -67,7 +68,7 @@ ALARM_FIXTURE = [
      'aggregate_period': 60,
      'matching_metadata': {},
      'enabled': True,
-     'state_timestamp': timeutils.utcnow(),
+     'state_timestamp': now,
      'user_id': '0987654321',
      'project_id': '0987654321'}
 ]
@@ -81,7 +82,7 @@ ALARM_FIXTURE_SUP = {
     'aggregate_period': 60,
     'matching_metadata': {},
     'enabled': True,
-    'state_timestamp': timeutils.utcnow(),
+    'state_timestamp': now,
     'user_id': None,
     'project_id': None
 }
@@ -90,24 +91,24 @@ AGGREGATED_METRIC_FIXTURE = [
     {'alarm_id': '2',
      'average': 2.0, 'sum': 2.0, 'maximum': 2.0,
      'minimum': 2.0, 'sample_count': 1,
-     'timestamp': timeutils.utcnow() -
+     'timestamp': now -
      datetime.timedelta(seconds=360)},
     {'alarm_id': '2',
      'average': 3.0, 'sum': 6.0, 'maximum': 4.0,
      'minimum': 2.0, 'sample_count': 2,
-     'timestamp': timeutils.utcnow() -
+     'timestamp': now -
      datetime.timedelta(seconds=240)},
     {'alarm_id': '2',
      'average': 4.0, 'sum': 12.0, 'maximum': 12.0,
      'minimum': 2.0, 'sample_count': 3,
-     'timestamp': timeutils.utcnow() -
+     'timestamp': now -
      datetime.timedelta(seconds=120)},
 ]
 AGGREGATED_METRIC_FIXTURE_SUP = {
     'alarm_id': '2',
     'average': 0.0, 'sum': 0.0, 'maximum': 0.0,
     'minimum': 0.0, 'sample_count': 1,
-    'timestamp': timeutils.utcnow()
+    'timestamp': now
 }
 
 
@@ -173,9 +174,8 @@ class AlarmTest(DBTestBase):
         objs = list(self.conn.alarm_list(enabled=None))
         self.assertEqual(len(objs), 4)
 
-        obj = self.conn.alarm_get(obj.id)
         for k in ALARM_FIXTURE_SUP.keys():
-            self.assertEqual(getattr(obj, k), ALARM_FIXTURE_SUP[k])
+            self.assertEqual(getattr(objs[3], k), ALARM_FIXTURE_SUP[k])
 
     def test_alarm_get_by_id(self):
         obj = self.conn.alarm_get(ALARM_FIXTURE[1]['id'])
@@ -189,23 +189,21 @@ class AlarmTest(DBTestBase):
         self.assertEqual(len(ids), 2)
 
     def test_alarm_list_with_owner(self):
-        ids = list(self.conn.alarm_list(user_id='0987654321'))
-        self.assertEqual(len(ids), 1)
+        objs = list(self.conn.alarm_list(user_id='0987654321'))
+        self.assertEqual(len(objs), 1)
 
-        obj = self.conn.alarm_get(ids[0])
-        self.assertEqual(ALARM_FIXTURE[2]['id'], obj.id)
+        self.assertEqual(ALARM_FIXTURE[2]['id'], objs[0].id)
 
     def test_alarm_list_by_name(self):
         objs = list(self.conn.alarm_list('alarmtest', enabled=None))
         self.assertEqual(len(objs), 3)
 
     def test_alarm_list_by_name_with_owner(self):
-        ids = list(self.conn.alarm_list(name='alarmtest',
-                                        user_id='0987654321',
-                                        project_id='0987654321'))
-        obj = self.conn.alarm_get(ids[0])
-        self.assertEqual(len(ids), 1)
-        self.assertEqual(ALARM_FIXTURE[2]['id'], obj.id)
+        objs = list(self.conn.alarm_list(name='alarmtest',
+                                         user_id='0987654321',
+                                         project_id='0987654321'))
+        self.assertEqual(len(objs), 1)
+        self.assertEqual(ALARM_FIXTURE[2]['id'], objs[0].id)
 
     def test_alarm_update(self):
         obj = self.conn.alarm_get(ALARM_FIXTURE[1]['id'])
