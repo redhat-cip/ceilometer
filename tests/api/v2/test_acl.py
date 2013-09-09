@@ -18,14 +18,18 @@
 """Test ACL."""
 
 import datetime
+from mock import patch
+
 from oslo.config import cfg
 
 from ceilometer.api import acl
 from ceilometer import policy
+from ceilometer.openstack.common import jsonutils
 
 from .base import FunctionalTest
 
 VALID_TOKEN = '4562138218392831'
+VALID_TOKEN2 = '4562138218392832'
 
 
 class FakeMemcache(object):
@@ -37,17 +41,34 @@ class FakeMemcache(object):
     def get(self, key):
         if key == "tokens/%s" % VALID_TOKEN:
             dt = datetime.datetime.now() + datetime.timedelta(minutes=5)
-            return ({'access': {
+            return jsonutils.dumps(({'access': {
                 'token': {'id': VALID_TOKEN},
                 'user': {
                     'id': 'user_id1',
                     'name': 'user_name1',
-                    'tenantId': '123i2910',
-                    'tenantName': 'mytenant',
+                    'tenantId': 'bc23a9d531064583ace8f67dad60f6bb',
+                    'tenantName': 'admin',
                     'roles': [
                         {'name': 'admin'},
+                        {'name': '_member_'},
+                        {'name': 'ResellerAdmin'},
                     ]},
-            }}, dt.strftime("%s"))
+            }}, dt.strftime("%s")))
+        if key == "tokens/%s" % VALID_TOKEN2:
+            dt = datetime.datetime.now() + datetime.timedelta(minutes=5)
+            return jsonutils.dumps(({'access': {
+                'token': {'id': VALID_TOKEN2},
+                'user': {
+                    'id': 'user_id1',
+                    'name': 'test',
+                    'tenantId': '52196e190ce44e53817c9c55b2b965ac',
+                    'tenantName': 'test',
+                    'roles': [
+                        {'name': 'Member'},
+                        {'name': '_member_'},
+                        {'name': 'ResellerAdmin'},
+                    ]},
+            }}, dt.strftime("%s")))
 
     def set(self, key, value, time=None):
         self.set_value = value
@@ -108,9 +129,60 @@ class TestAPIACL(FunctionalTest):
                                  expect_errors=True,
                                  headers={
                                      "X-Auth-Token": VALID_TOKEN,
-                                     "X-Roles": "admin",
+                                     "X-Roles": "admin,_member_,ResellerAdmin",
                                      "X-Tenant-Name": "admin",
                                      "X-Tenant-Id":
                                      "bc23a9d531064583ace8f67dad60f6bb",
                                  })
         self.assertEqual(response.status_int, 200)
+
+    def test_post_alarm_multiple_role_admin(self):
+        json = {
+            'name': 'added_alarm',
+            'counter_name': 'ameter',
+            'comparison_operator': 'gt',
+            'threshold': 2.0,
+            'statistic': 'average',
+            'matching_metadata': {'project_id':
+                                  '7bcc0e4e191c11e39c4800224d8226cd'}
+        }
+        with patch('ceilometer.openstack.common.rpc.cast'):
+            response = self.post_json('/alarms', params=json,
+                                      expect_errors=True,
+                                      extra_environ=self.environ,
+                                      headers={
+                                          "X-Auth-Token": VALID_TOKEN,
+                                          "X-Roles":
+                                          "admin,_member_,ResellerAdmin",
+                                          "X-Tenant-Name": "admin",
+                                          "X-Tenant-Id":
+                                          "bc23a9d531064583ace8f67dad60f6bb",
+                                      })
+            self.assertEqual(response.status_int, 200)
+        alarms = list(self.alarm_conn.alarm_list())
+        self.assertEqual(1, len(alarms))
+        self.assertEqual(alarms[0].matching_metadata['project_id'],
+                         '7bcc0e4e191c11e39c4800224d8226cd')
+
+    def test_post_alarm_multiple_role_not_admin(self):
+        json = {
+            'name': 'added_alarm',
+            'counter_name': 'ameter',
+            'comparison_operator': 'gt',
+            'threshold': 2.0,
+            'statistic': 'average',
+            'matching_metadata': {'project_id':
+                                  '7bcc0e4e191c11e39c4800224d8226cd'}
+        }
+        with patch('ceilometer.openstack.common.rpc.cast'):
+            response = self.post_json('/alarms', params=json,
+                                      expect_errors=True,
+                                      extra_environ=self.environ,
+                                      headers={
+                                          "X-Auth-Token": VALID_TOKEN2,
+                                          "X-Roles": "_member_",
+                                          "X-Tenant-Name": "test",
+                                          "X-Tenant-Id":
+                                          "52196e190ce44e53817c9c55b2b965ac",
+                                      })
+            self.assertEqual(response.status_int, 401)
