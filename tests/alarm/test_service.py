@@ -126,7 +126,7 @@ class TestAlarmService(tests_base.TestCase):
 
         aggregated_metrics = [
             {'id': 4, 'sample_count': 1, 'timestamp': now - datetime.timedelta(
-                seconds=(alarm.aggregate_period - 4 )), 'average': 1.0},
+                seconds=(alarm.aggregate_period - 40)), 'average': 1.0},
             {'id': 3, 'sample_count': 1, 'timestamp': now - datetime.timedelta(
                 seconds=(alarm.aggregate_period * 2)), 'average': 1.0},
             {'id': 2, 'sample_count': 1, 'timestamp': now - datetime.timedelta(
