@@ -24,12 +24,15 @@ import unittest2
 import mox
 import stubout
 
+from ceilometer.openstack.common import gettextutils
+
 
 class TestCase(unittest2.TestCase):
 
     def setUp(self):
         super(TestCase, self).setUp()
         self.mox = mox.Mox()
+        gettextutils.install('ceilometer')
         self.stubs = stubout.StubOutForTesting()
 
     def tearDown(self):

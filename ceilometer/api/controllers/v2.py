@@ -654,8 +654,8 @@ class AlarmsController(rest.RestController):
         """
         user = pecan.request.headers.get('X-User-Id')
         project = pecan.request.headers.get('X-Project-Id')
-        role = pecan.request.headers.get('X-Role')
-        is_admin = role and policy.check_is_admin([role]) or False
+        roles = pecan.request.headers.get('X-Roles', "").split(",")
+        is_admin = policy.check_is_admin(roles)
         auth_token = pecan.request.headers.get('X-Auth-Token')
 
         return context.RequestContext(auth_token=auth_token, user=user,
@@ -676,12 +676,6 @@ class AlarmsController(rest.RestController):
         #FIXME(sileht): project_id can be not exists ?
         data.user_id = pecan.request.headers.get('X-User-Id')
         data.project_id = pecan.request.headers.get('X-Project-Id')
-
-        role = pecan.request.headers.get('X-Role')
-        if not role or not policy.check_is_admin([role]):
-            if not hasattr(data, "matching_meta"):
-                data.matching_metadata = {}
-            data.matching_metadata['project_id'] = data.project_id
 
     @wsme_pecan.wsexpose(None, body=Alarm, status=204)
     def post(self, data):
