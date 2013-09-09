@@ -1,3 +1,9 @@
+ceilometer (2013.1alerting3-1enovance1ubuntu1) precise; urgency=low
+
+  * Update to alerting3 
+
+ -- Mehdi Abaakouk <sileht@sileht.net>  Mon, 09 Sep 2013 11:47:53 +0200
+
 ceilometer (2013.1alerting2-1enovance1ubuntu1) precise; urgency=low
 
    * Fix alarming to branch master (84b699d553a36cada7f00d846a31b4aa2e46ca9e)
