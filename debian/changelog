@@ -1,3 +1,9 @@
+ceilometer (2013.1alerting4-1enovance1ubuntu1) precise; urgency=low
+
+  * Update to alerting4 
+
+ -- Mehdi Abaakouk <sileht@sileht.net>  Fri, 04 Oct 2013 12:12:15 +0200
+
 ceilometer (2013.1alerting3-1enovance1ubuntu1) precise; urgency=low
 
   * Update to alerting3 
