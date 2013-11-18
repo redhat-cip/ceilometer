@@ -101,6 +101,6 @@ class TestNotifications(test.BaseTestCase):
                          ['HTTP_X_SERVICE_NAME'])
         self.assertEqual(sample.volume, 1)
 
-    def test_exchanges(self):
-        topics = middleware.HTTPRequest().get_exchange_topics(self.CONF)
-        self.assertEqual(len(topics), 4)
+    def test_targets(self):
+        targets = middleware.HTTPRequest().get_targets(self.CONF)
+        self.assertEqual(len(targets), 4)

@@ -17,12 +17,14 @@
 # under the License.
 import socket
 
+import eventlet
 import mock
 from mock import patch
 import msgpack
 from stevedore import extension
 
 from ceilometer import collector
+from ceilometer import messaging
 from ceilometer.openstack.common.fixture import config
 from ceilometer import sample
 from ceilometer.tests import base as tests_base
@@ -36,9 +38,11 @@ class FakeConnection():
 class TestCollector(tests_base.BaseTestCase):
     def setUp(self):
         super(TestCollector, self).setUp()
+        messaging.setup('fake://')
+        self.addCleanup(messaging.cleanup)
         self.CONF = self.useFixture(config.Config()).conf
         self.CONF.set_override("connection", "log://", group='database')
-        self.srv = collector.CollectorService('the-host', 'the-topic')
+        self.srv = collector.CollectorService()
         self.counter = sample.Sample(
             name='foobar',
             type='bad',
@@ -81,8 +85,8 @@ class TestCollector(tests_base.BaseTestCase):
     def test_record_metering_data(self):
         mock_dispatcher = mock.MagicMock()
         self.srv.dispatcher_manager = self._make_test_manager(mock_dispatcher)
-
         self.srv.record_metering_data(None, self.counter)
+        eventlet.sleep(0)
 
         mock_dispatcher.record_metering_data.assert_called_once_with(
             data=self.counter)
@@ -143,7 +147,7 @@ class TestCollector(tests_base.BaseTestCase):
         # If we try to create a real RPC connection, init_host() never
         # returns. Mock it out so we can establish the service
         # configuration.
-        with patch('ceilometer.openstack.common.rpc.create_connection'):
+        with mock.patch.object(self.srv.rpc_server, 'start'):
             self.srv.start()
 
     def test_only_udp(self):
@@ -156,16 +160,5 @@ class TestCollector(tests_base.BaseTestCase):
     def test_only_rpc(self):
         """Check that only RPC is started if udp_address is empty."""
         self.CONF.set_override('udp_address', '', group='collector')
-        with patch('ceilometer.openstack.common.rpc.create_connection'):
+        with mock.patch.object(self.srv.rpc_server, 'start'):
             self.srv.start()
-
-    @patch.object(FakeConnection, 'create_worker')
-    @patch('ceilometer.openstack.common.rpc.dispatcher.RpcDispatcher')
-    def test_initialize_service_hook_conf_opt(self, mock_dispatcher,
-                                              mock_worker):
-        self.CONF.set_override('metering_topic', 'mytopic',
-                               group='publisher_rpc')
-        self.srv.conn = FakeConnection()
-        self.srv.initialize_service_hook(mock.MagicMock())
-        mock_worker.assert_called_once_with('mytopic', mock_dispatcher(),
-                                            'ceilometer.collector.mytopic')

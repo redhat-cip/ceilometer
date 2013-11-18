@@ -22,6 +22,7 @@ import six
 import mock
 import webob
 
+from ceilometer import messaging
 from ceilometer.objectstore import swift_middleware
 from ceilometer.openstack.common.fixture import config
 from ceilometer.openstack.common.fixture.mockpatch import PatchObject
@@ -68,6 +69,8 @@ class TestSwiftMiddleware(test.BaseTestCase):
         self.pipeline_manager = self._faux_pipeline_manager()
         self.useFixture(PatchObject(pipeline, 'setup_pipeline',
                                     side_effect=self._fake_setup_pipeline))
+        messaging.setup('fake://')
+        self.addCleanup(messaging.cleanup)
         self.CONF = self.useFixture(config.Config()).conf
 
     @staticmethod

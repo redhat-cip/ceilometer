@@ -21,9 +21,11 @@
 import datetime
 
 import eventlet
-import fixtures
 import mock
+import oslo.messaging
+import oslo.messaging._drivers.common
 
+from ceilometer import messaging
 from ceilometer.openstack.common.fixture import config
 from ceilometer.openstack.common import network_utils
 from ceilometer.openstack.common import test
@@ -90,220 +92,252 @@ class TestPublish(test.BaseTestCase):
         ),
     ]
 
-    def faux_cast(self, context, topic, msg):
-        if self.rpc_unreachable:
-            #note(sileht): Ugly, but when rabbitmq is unreachable
-            # and rabbitmq_max_retries is not 0
-            # oslo.rpc do a sys.exit(1), so we do the same
-            # things here until this is fixed in oslo
-            raise SystemExit(1)
-        else:
-            self.published.append((topic, msg))
-
     def setUp(self):
         super(TestPublish, self).setUp()
         self.CONF = self.useFixture(config.Config()).conf
+
+        messaging.setup('fake://')
+        self.addCleanup(messaging.cleanup)
+
         self.published = []
-        self.rpc_unreachable = False
-        self.useFixture(fixtures.MonkeyPatch(
-            "ceilometer.openstack.common.rpc.cast",
-            self.faux_cast))
 
     def test_published(self):
         publisher = rpc.RPCPublisher(
             network_utils.urlsplit('rpc://'))
-        publisher.publish_samples(None,
-                                  self.test_data)
-        self.assertEqual(len(self.published), 1)
-        self.assertEqual(self.published[0][0],
-                         self.CONF.publisher_rpc.metering_topic)
-        self.assertIsInstance(self.published[0][1]['args']['data'], list)
-        self.assertEqual(self.published[0][1]['method'],
-                         'record_metering_data')
+
+        cast_context = mock.MagicMock()
+        with mock.patch.object(publisher.rpc_client, 'prepare') as prepare:
+            prepare.return_value = cast_context
+            publisher.publish_samples(mock.MagicMock(),
+                                      self.test_data)
+
+        prepare.assert_called_once_with(
+            topic=self.CONF.publisher_rpc.metering_topic)
+        cast_context.cast.assert_called_once_with(
+            mock.ANY, 'record_metering_data', data=mock.ANY)
 
     def test_publish_target(self):
         publisher = rpc.RPCPublisher(
             network_utils.urlsplit('rpc://?target=custom_procedure_call'))
-        publisher.publish_samples(None,
-                                  self.test_data)
-        self.assertEqual(len(self.published), 1)
-        self.assertEqual(self.published[0][0],
-                         self.CONF.publisher_rpc.metering_topic)
-        self.assertIsInstance(self.published[0][1]['args']['data'], list)
-        self.assertEqual(self.published[0][1]['method'],
-                         'custom_procedure_call')
+
+        cast_context = mock.MagicMock()
+        with mock.patch.object(publisher.rpc_client, 'prepare') as prepare:
+            prepare.return_value = cast_context
+            publisher.publish_samples(mock.MagicMock(),
+                                      self.test_data)
+
+        prepare.assert_called_once_with(
+            topic=self.CONF.publisher_rpc.metering_topic)
+        cast_context.cast.assert_called_once_with(
+            mock.ANY, 'custom_procedure_call', data=mock.ANY)
 
     def test_published_with_per_meter_topic(self):
         publisher = rpc.RPCPublisher(
             network_utils.urlsplit('rpc://?per_meter_topic=1'))
-        publisher.publish_samples(None,
-                                  self.test_data)
-        self.assertEqual(len(self.published), 4)
-        for topic, rpc_call in self.published:
-            meters = rpc_call['args']['data']
-            self.assertIsInstance(meters, list)
-            if topic != self.CONF.publisher_rpc.metering_topic:
-                self.assertEqual(len(set(meter['counter_name']
-                                         for meter in meters)),
-                                 1,
-                                 "Meter are published grouped by name")
 
-        topics = [topic for topic, meter in self.published]
-        self.assertIn(self.CONF.publisher_rpc.metering_topic, topics)
-        self.assertIn(
-            self.CONF.publisher_rpc.metering_topic + '.' + 'test', topics)
-        self.assertIn(
-            self.CONF.publisher_rpc.metering_topic + '.' + 'test2', topics)
-        self.assertIn(
-            self.CONF.publisher_rpc.metering_topic + '.' + 'test3', topics)
+        with mock.patch.object(publisher.rpc_client, 'prepare') as prepare:
+            publisher.publish_samples(mock.MagicMock(),
+                                      self.test_data)
+
+            class MeterGroupMatcher(object):
+                def __eq__(self, meters):
+                    return len(set(meter['counter_name']
+                                   for meter in meters)) == 1
+
+            topic = self.CONF.publisher_rpc.metering_topic
+            expected = [mock.call(topic=topic),
+                        mock.call().cast(mock.ANY, 'record_metering_data',
+                                         data=mock.ANY),
+                        mock.call(topic=topic + '.test'),
+                        mock.call().cast(mock.ANY, 'record_metering_data',
+                                         data=MeterGroupMatcher()),
+                        mock.call(topic=topic + '.test2'),
+                        mock.call().cast(mock.ANY, 'record_metering_data',
+                                         data=MeterGroupMatcher()),
+                        mock.call(topic=topic + '.test3'),
+                        mock.call().cast(mock.ANY, 'record_metering_data',
+                                         data=MeterGroupMatcher())]
+            self.assertEqual(prepare.mock_calls, expected)
 
     def test_published_concurrency(self):
         """This test the concurrent access to the local queue
         of the rpc publisher
         """
 
-        def faux_cast_go(context, topic, msg):
-            self.published.append((topic, msg))
-
-        def faux_cast_wait(context, topic, msg):
-            self.useFixture(fixtures.MonkeyPatch(
-                "ceilometer.openstack.common.rpc.cast",
-                faux_cast_go))
-            # Sleep to simulate concurrency and allow other threads to work
-            eventlet.sleep(0)
-            self.published.append((topic, msg))
-
-        self.useFixture(fixtures.MonkeyPatch(
-            "ceilometer.openstack.common.rpc.cast",
-            faux_cast_wait))
-
         publisher = rpc.RPCPublisher(network_utils.urlsplit('rpc://'))
-        job1 = eventlet.spawn(publisher.publish_samples, None, self.test_data)
-        job2 = eventlet.spawn(publisher.publish_samples, None, self.test_data)
+        cast_context = mock.MagicMock()
 
-        job1.wait()
-        job2.wait()
+        with mock.patch.object(publisher.rpc_client, 'prepare') as prepare:
+            def fake_prepare_go(topic):
+                return cast_context
+
+            def fake_prepare_wait(topic):
+                prepare.side_effect = fake_prepare_go
+                # Sleep to simulate concurrency and allow other threads to work
+                eventlet.sleep(0)
+                return cast_context
+
+            prepare.side_effect = fake_prepare_wait
+
+            job1 = eventlet.spawn(publisher.publish_samples,
+                                  mock.MagicMock(), self.test_data)
+            job2 = eventlet.spawn(publisher.publish_samples,
+                                  mock.MagicMock(), self.test_data)
+
+            job1.wait()
+            job2.wait()
 
         self.assertEqual(publisher.policy, 'default')
-        self.assertEqual(len(self.published), 2)
+        self.assertEqual(len(cast_context.cast.mock_calls), 2)
         self.assertEqual(len(publisher.local_queue), 0)
 
     @mock.patch('ceilometer.publisher.rpc.LOG')
     def test_published_with_no_policy(self, mylog):
-        self.rpc_unreachable = True
         publisher = rpc.RPCPublisher(
             network_utils.urlsplit('rpc://'))
-        self.assertTrue(mylog.info.called)
+        side_effect = oslo.messaging._drivers.common.RPCException()
+        with mock.patch.object(publisher.rpc_client, 'prepare') as prepare:
+            prepare.side_effect = side_effect
 
-        self.assertRaises(
-            SystemExit,
-            publisher.publish_samples,
-            None, self.test_data)
-        self.assertEqual(publisher.policy, 'default')
-        self.assertEqual(len(self.published), 0)
-        self.assertEqual(len(publisher.local_queue), 0)
+            self.assertRaises(
+                oslo.messaging._drivers.common.RPCException,
+                publisher.publish_samples,
+                mock.MagicMock(), self.test_data)
+            self.assertTrue(mylog.info.called)
+            self.assertEqual(publisher.policy, 'default')
+            self.assertEqual(len(publisher.local_queue), 0)
+            prepare.assert_called_once_with(
+                topic=self.CONF.publisher_rpc.metering_topic)
 
     @mock.patch('ceilometer.publisher.rpc.LOG')
     def test_published_with_policy_block(self, mylog):
-        self.rpc_unreachable = True
         publisher = rpc.RPCPublisher(
             network_utils.urlsplit('rpc://?policy=default'))
-        self.assertTrue(mylog.info.called)
-        self.assertRaises(
-            SystemExit,
-            publisher.publish_samples,
-            None, self.test_data)
-        self.assertEqual(len(self.published), 0)
-        self.assertEqual(len(publisher.local_queue), 0)
+        side_effect = oslo.messaging._drivers.common.RPCException()
+        with mock.patch.object(publisher.rpc_client, 'prepare') as prepare:
+            prepare.side_effect = side_effect
+            self.assertRaises(
+                oslo.messaging._drivers.common.RPCException,
+                publisher.publish_samples,
+                mock.MagicMock(), self.test_data)
+            self.assertTrue(mylog.info.called)
+            self.assertEqual(len(publisher.local_queue), 0)
+            prepare.assert_called_once_with(
+                topic=self.CONF.publisher_rpc.metering_topic)
 
     @mock.patch('ceilometer.publisher.rpc.LOG')
     def test_published_with_policy_incorrect(self, mylog):
-        self.rpc_unreachable = True
         publisher = rpc.RPCPublisher(
             network_utils.urlsplit('rpc://?policy=notexist'))
-        self.assertRaises(
-            SystemExit,
-            publisher.publish_samples,
-            None, self.test_data)
-        self.assertTrue(mylog.warn.called)
-        self.assertEqual(publisher.policy, 'default')
-        self.assertEqual(len(self.published), 0)
-        self.assertEqual(len(publisher.local_queue), 0)
+        side_effect = oslo.messaging._drivers.common.RPCException()
+        with mock.patch.object(publisher.rpc_client, 'prepare') as prepare:
+            prepare.side_effect = side_effect
+            self.assertRaises(
+                oslo.messaging._drivers.common.RPCException,
+                publisher.publish_samples,
+                mock.MagicMock(), self.test_data)
+            self.assertTrue(mylog.warn.called)
+            self.assertEqual(publisher.policy, 'default')
+            self.assertEqual(len(publisher.local_queue), 0)
+            prepare.assert_called_once_with(
+                topic=self.CONF.publisher_rpc.metering_topic)
 
     def test_published_with_policy_drop_and_rpc_down(self):
-        self.rpc_unreachable = True
         publisher = rpc.RPCPublisher(
             network_utils.urlsplit('rpc://?policy=drop'))
-        publisher.publish_samples(None,
-                                  self.test_data)
-        self.assertEqual(len(self.published), 0)
-        self.assertEqual(len(publisher.local_queue), 0)
+        side_effect = oslo.messaging._drivers.common.RPCException()
+        with mock.patch.object(publisher.rpc_client, 'prepare') as prepare:
+            prepare.side_effect = side_effect
+            publisher.publish_samples(mock.MagicMock(),
+                                      self.test_data)
+            self.assertEqual(len(publisher.local_queue), 0)
+            prepare.assert_called_once_with(
+                topic=self.CONF.publisher_rpc.metering_topic)
 
     def test_published_with_policy_queue_and_rpc_down(self):
-        self.rpc_unreachable = True
         publisher = rpc.RPCPublisher(
             network_utils.urlsplit('rpc://?policy=queue'))
-        publisher.publish_samples(None,
-                                  self.test_data)
-        self.assertEqual(len(self.published), 0)
-        self.assertEqual(len(publisher.local_queue), 1)
+        side_effect = oslo.messaging._drivers.common.RPCException()
+        with mock.patch.object(publisher.rpc_client, 'prepare') as prepare:
+            prepare.side_effect = side_effect
+
+            publisher.publish_samples(mock.MagicMock(),
+                                      self.test_data)
+            self.assertEqual(len(publisher.local_queue), 1)
+            prepare.assert_called_once_with(
+                topic=self.CONF.publisher_rpc.metering_topic)
 
     def test_published_with_policy_queue_and_rpc_down_up(self):
         self.rpc_unreachable = True
         publisher = rpc.RPCPublisher(
             network_utils.urlsplit('rpc://?policy=queue'))
-        publisher.publish_samples(None,
-                                  self.test_data)
-        self.assertEqual(len(self.published), 0)
-        self.assertEqual(len(publisher.local_queue), 1)
 
-        self.rpc_unreachable = False
-        publisher.publish_samples(None,
-                                  self.test_data)
+        side_effect = oslo.messaging._drivers.common.RPCException()
+        with mock.patch.object(publisher.rpc_client, 'prepare') as prepare:
+            prepare.side_effect = side_effect
+            publisher.publish_samples(mock.MagicMock(),
+                                      self.test_data)
 
-        self.assertEqual(len(self.published), 2)
-        self.assertEqual(len(publisher.local_queue), 0)
+            self.assertEqual(len(publisher.local_queue), 1)
+
+            prepare.side_effect = mock.MagicMock()
+            publisher.publish_samples(mock.MagicMock(),
+                                      self.test_data)
+
+            self.assertEqual(len(publisher.local_queue), 0)
+
+            topic = self.CONF.publisher_rpc.metering_topic
+            expected = [mock.call(topic=topic),
+                        mock.call(topic=topic),
+                        mock.call(topic=topic)]
+            self.assertEqual(prepare.mock_calls, expected)
 
     def test_published_with_policy_sized_queue_and_rpc_down(self):
-        self.rpc_unreachable = True
         publisher = rpc.RPCPublisher(
             network_utils.urlsplit('rpc://?policy=queue&max_queue_length=3'))
-        for i in range(5):
-            for s in self.test_data:
-                s.source = 'test-%d' % i
-            publisher.publish_samples(None,
-                                      self.test_data)
-        self.assertEqual(len(self.published), 0)
+
+        side_effect = oslo.messaging._drivers.common.RPCException()
+        with mock.patch.object(publisher.rpc_client, 'prepare') as prepare:
+            prepare.side_effect = side_effect
+            for i in range(0, 5):
+                for s in self.test_data:
+                    s.source = 'test-%d' % i
+                publisher.publish_samples(mock.MagicMock(),
+                                          self.test_data)
+
         self.assertEqual(len(publisher.local_queue), 3)
         self.assertEqual(
-            publisher.local_queue[0][2]['args']['data'][0]['source'],
+            publisher.local_queue[0][2][0]['source'],
             'test-2'
         )
         self.assertEqual(
-            publisher.local_queue[1][2]['args']['data'][0]['source'],
+            publisher.local_queue[1][2][0]['source'],
             'test-3'
         )
         self.assertEqual(
-            publisher.local_queue[2][2]['args']['data'][0]['source'],
+            publisher.local_queue[2][2][0]['source'],
             'test-4'
         )
 
     def test_published_with_policy_default_sized_queue_and_rpc_down(self):
-        self.rpc_unreachable = True
         publisher = rpc.RPCPublisher(
             network_utils.urlsplit('rpc://?policy=queue'))
-        for i in range(2000):
-            for s in self.test_data:
-                s.source = 'test-%d' % i
-            publisher.publish_samples(None,
-                                      self.test_data)
-        self.assertEqual(len(self.published), 0)
+
+        side_effect = oslo.messaging._drivers.common.RPCException()
+        with mock.patch.object(publisher.rpc_client, 'prepare') as prepare:
+            prepare.side_effect = side_effect
+            for i in range(0, 2000):
+                for s in self.test_data:
+                    s.source = 'test-%d' % i
+                publisher.publish_samples(mock.MagicMock(),
+                                          self.test_data)
+
         self.assertEqual(len(publisher.local_queue), 1024)
         self.assertEqual(
-            publisher.local_queue[0][2]['args']['data'][0]['source'],
+            publisher.local_queue[0][2][0]['source'],
             'test-976'
         )
         self.assertEqual(
-            publisher.local_queue[1023][2]['args']['data'][0]['source'],
+            publisher.local_queue[1023][2][0]['source'],
             'test-1999'
         )

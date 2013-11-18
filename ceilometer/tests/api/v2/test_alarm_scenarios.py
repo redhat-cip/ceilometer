@@ -30,6 +30,7 @@ import mock
 from six import moves
 import testscenarios
 
+from ceilometer import messaging
 from ceilometer.storage import models
 from ceilometer.tests.api.v2 import FunctionalTest
 from ceilometer.tests import db as tests_db
@@ -1466,17 +1467,18 @@ class TestAlarms(FunctionalTest,
             }
 
         }
-        with mock.patch('ceilometer.openstack.common.notifier.api.notify') \
-                as notifier:
+        with mock.patch.object(messaging, 'get_notifier') as get_notifier:
+            notifier = get_notifier.return_value
+
             self.post_json('/alarms', params=json, headers=self.auth_headers)
 
-        calls = notifier.call_args_list
+            get_notifier.assert_called_once_with(publisher_id='ceilometer.api')
+
+        calls = notifier.info.call_args_list
         self.assertEqual(len(calls), 1)
         args, _ = calls[0]
-        context, publisher, event_type, priority, payload = args
-        self.assertTrue(publisher.startswith('ceilometer.api'))
+        context, event_type, payload = args
         self.assertEqual(event_type, 'alarm.creation')
-        self.assertEqual(priority, 'INFO')
         self.assertEqual(payload['detail']['name'], 'sent_notification')
         self.assertTrue(set(['alarm_id', 'detail', 'event_id', 'on_behalf_of',
                              'project_id', 'timestamp', 'type',
@@ -1485,18 +1487,19 @@ class TestAlarms(FunctionalTest,
     def test_alarm_sends_notification(self):
         # Hit the AlarmController (with alarm_id supplied) ...
         data = self.get_json('/alarms')
-        with mock.patch('ceilometer.openstack.common.notifier.api.notify') \
-                as notifier:
+        with mock.patch.object(messaging, 'get_notifier') as get_notifier:
+            notifier = get_notifier.return_value
+
             self.delete('/alarms/%s' % data[0]['alarm_id'],
                         headers=self.auth_headers, status=204)
 
-        calls = notifier.call_args_list
+            get_notifier.assert_called_once_with(publisher_id='ceilometer.api')
+
+        calls = notifier.info.call_args_list
         self.assertEqual(len(calls), 1)
         args, _ = calls[0]
-        context, publisher, event_type, priority, payload = args
-        self.assertTrue(publisher.startswith('ceilometer.api'))
+        context, event_type, payload = args
         self.assertEqual(event_type, 'alarm.deletion')
-        self.assertEqual(priority, 'INFO')
         self.assertEqual(payload['detail']['name'], 'name1')
         self.assertTrue(set(['alarm_id', 'detail', 'event_id', 'on_behalf_of',
                              'project_id', 'timestamp', 'type',

@@ -90,7 +90,7 @@ class NotificationBaseTestCase(test.BaseTestCase):
             'compute.instance.start', ['compute.*.*.foobar', 'compute.*']))
 
     class FakePlugin(plugin.NotificationBase):
-        def get_exchange_topics(self, conf):
+        def get_targets(self, conf):
             return
 
         def process_notification(self, message):

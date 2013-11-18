@@ -24,9 +24,10 @@ import sys
 
 import eventlet
 # NOTE(jd) We need to monkey patch the socket and select module for,
-# at least, oslo.rpc, otherwise everything's blocked on its first read()
-# or select()
-eventlet.monkey_patch(socket=True, select=True)
+# at least, oslo.messaging, otherwise everything's blocked on its
+# first read() or select(), thread need to be patched too, because
+# oslo.messaging use threading.local
+eventlet.monkey_patch(socket=True, select=True, thread=True)
 
 
 from oslo.config import cfg
@@ -62,8 +63,7 @@ LOG = logging.getLogger(__name__)
 
 def alarm_notifier():
     service.prepare_service()
-    os_service.launch(alarm_service.AlarmNotifierService(
-        cfg.CONF.host, 'ceilometer.alarm')).wait()
+    os_service.launch(alarm_service.AlarmNotifierService()).wait()
 
 
 def alarm_evaluator():
@@ -84,8 +84,7 @@ def agent_compute():
 
 def agent_notification():
     service.prepare_service()
-    os_service.launch(notification.NotificationService(
-        cfg.CONF.host, 'ceilometer.agent.notification')).wait()
+    os_service.launch(notification.NotificationService()).wait()
 
 
 def api():
@@ -96,8 +95,7 @@ def api():
 
 def collector_service():
     service.prepare_service()
-    os_service.launch(collector.CollectorService(
-        cfg.CONF.host, 'ceilometer.collector')).wait()
+    os_service.launch(collector.CollectorService()).wait()
 
 
 def storage_dbsync():

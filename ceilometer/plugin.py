@@ -19,19 +19,9 @@
 """
 
 import abc
-import collections
 import fnmatch
 
-from oslo.config import cfg
 import six
-
-# Import this option so every Notification plugin can use it freely.
-cfg.CONF.import_opt('notification_topics',
-                    'ceilometer.openstack.common.notifier.rpc_notifier')
-
-
-ExchangeTopics = collections.namedtuple('ExchangeTopics',
-                                        ['exchange', 'topics'])
 
 
 class PluginBase(object):
@@ -50,8 +40,8 @@ class NotificationBase(PluginBase):
         """
 
     @abc.abstractmethod
-    def get_exchange_topics(self, conf):
-        """Return a sequence of ExchangeTopics defining the exchange and
+    def get_targets(self, conf):
+        """Return a sequence of oslo.messaging.Target defining the exchange and
         topics to be connected for this plugin.
 
         :param conf: Configuration.
