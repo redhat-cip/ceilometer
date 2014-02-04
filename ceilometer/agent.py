@@ -27,8 +27,8 @@ from stevedore import extension
 from ceilometer.openstack.common import context
 from ceilometer.openstack.common.gettextutils import _  # noqa
 from ceilometer.openstack.common import log
-from ceilometer.openstack.common import service as os_service
 from ceilometer import pipeline
+from ceilometer import service
 
 LOG = log.getLogger(__name__)
 
@@ -97,7 +97,7 @@ class PollingTask(object):
                         exc_info=True)
 
 
-class AgentManager(os_service.Service):
+class AgentManager(service.Service):
 
     def __init__(self, namespace, default_discovery=[]):
         super(AgentManager, self).__init__()

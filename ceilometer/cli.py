@@ -40,7 +40,6 @@ from ceilometer.compute import manager as compute_manager
 from ceilometer import notification
 from ceilometer.openstack.common import context
 from ceilometer.openstack.common import importutils
-from ceilometer.openstack.common import service as os_service
 from ceilometer.openstack.common import timeutils
 from ceilometer import pipeline
 from ceilometer import sample
@@ -63,28 +62,28 @@ LOG = logging.getLogger(__name__)
 
 def alarm_notifier():
     service.prepare_service()
-    os_service.launch(alarm_service.AlarmNotifierService()).wait()
+    service.launch(alarm_service.AlarmNotifierService()).wait()
 
 
 def alarm_evaluator():
     service.prepare_service()
     eval_service = importutils.import_object(cfg.CONF.alarm.evaluation_service)
-    os_service.launch(eval_service).wait()
+    service.launch(eval_service).wait()
 
 
 def agent_central():
     service.prepare_service()
-    os_service.launch(central_manager.AgentManager()).wait()
+    service.launch(central_manager.AgentManager()).wait()
 
 
 def agent_compute():
     service.prepare_service()
-    os_service.launch(compute_manager.AgentManager()).wait()
+    service.launch(compute_manager.AgentManager()).wait()
 
 
 def agent_notification():
     service.prepare_service()
-    os_service.launch(notification.NotificationService()).wait()
+    service.launch(notification.NotificationService()).wait()
 
 
 def api():
@@ -95,7 +94,7 @@ def api():
 
 def collector_service():
     service.prepare_service()
-    os_service.launch(collector.CollectorService()).wait()
+    service.launch(collector.CollectorService()).wait()
 
 
 def storage_dbsync():

@@ -25,10 +25,15 @@ from oslo.config import cfg
 from stevedore import named
 
 from ceilometer import messaging
+from ceilometer.service.service import Service, launch  # noqa
 from ceilometer.openstack.common import gettextutils
 from ceilometer.openstack.common.gettextutils import _  # noqa
 from ceilometer.openstack.common import log
 
+__all__ = ['Service',
+           'DispatchedService',
+           'prepare_service',
+           'launch']
 
 OPTS = [
     cfg.StrOpt('host',

@@ -17,7 +17,7 @@
 # under the License.
 """Rest alarm notifier."""
 
-import eventlet
+import asyncio
 import requests
 import six.moves.urllib.parse as urlparse
 
@@ -78,4 +78,5 @@ class RestAlarmNotifier(notifier.AlarmNotifier):
             if cert:
                 kwargs['cert'] = (cert, key) if key else cert
 
-        eventlet.spawn_n(requests.post, action.geturl(), **kwargs)
+        loop = asyncio.get_event_loop()
+        loop.call_soon(requests.post, action.geturl(), **kwargs)

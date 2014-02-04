@@ -124,7 +124,7 @@ class MessagingPublisher(publisher.PublisherBase):
 
     def flush(self):
         #note(sileht):
-        # IO of the rpc stuff in handled by eventlet,
+        # IO of the rpc stuff in handled by eventlet or asyncio,
         # this is why the self.local_queue, is emptied before processing the
         # queue and the remaining messages in the queue are added to
         # self.local_queue after in case of a other call have already added

@@ -1,7 +1,9 @@
 #!/bin/bash
 set -e
 
-
+# temporary hack to get the oslo.messaging with asyncio
+pip uninstall --yes oslo.messaging || true
+pip install -U -e git://github.com/enovance/oslo.messaging.git@sileht/asyncio#egg=oslo.messaging
 
 function clean_exit(){
     local error_code="$?"

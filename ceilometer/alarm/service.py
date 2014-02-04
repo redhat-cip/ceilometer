@@ -31,7 +31,7 @@ from ceilometer import messaging
 from ceilometer.openstack.common.gettextutils import _  # noqa
 from ceilometer.openstack.common import log
 from ceilometer.openstack.common import network_utils
-from ceilometer.openstack.common import service as os_service
+from ceilometer import service
 
 
 OPTS = [
@@ -110,7 +110,7 @@ class AlarmService(object):
         pass
 
 
-class SingletonAlarmService(AlarmService, os_service.Service):
+class SingletonAlarmService(AlarmService, service.Service):
 
     def __init__(self):
         super(SingletonAlarmService, self).__init__()
@@ -136,7 +136,7 @@ class SingletonAlarmService(AlarmService, os_service.Service):
 cfg.CONF.import_opt('host', 'ceilometer.service')
 
 
-class PartitionedAlarmService(AlarmService, os_service.Service):
+class PartitionedAlarmService(AlarmService, service.Service):
 
     def __init__(self):
         super(PartitionedAlarmService, self).__init__()
@@ -188,7 +188,7 @@ class PartitionedAlarmService(AlarmService, os_service.Service):
                                             data.get('alarms'))
 
 
-class AlarmNotifierService(os_service.Service):
+class AlarmNotifierService(service.Service):
 
     EXTENSIONS_NAMESPACE = "ceilometer.alarm.notifier"
 

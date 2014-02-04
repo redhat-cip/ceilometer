@@ -16,7 +16,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import eventlet
+import asyncio
 import socket
 
 import msgpack
@@ -26,8 +26,6 @@ import oslo.messaging
 from ceilometer import messaging
 from ceilometer.openstack.common.gettextutils import _  # noqa
 from ceilometer.openstack.common import log
-from ceilometer.openstack.common import service as os_service
-from ceilometer.openstack.common import units
 from ceilometer import service
 
 OPTS = [
@@ -50,7 +48,8 @@ cfg.CONF.import_opt('metering_topic', 'ceilometer.publisher.messaging',
 LOG = log.getLogger(__name__)
 
 
-class CollectorService(service.DispatchedService, os_service.Service):
+class CollectorService(service.DispatchedService, service.Service,
+                       asyncio.DatagramProtocol):
     """Listener for the collector service."""
 
     def __init__(self):
@@ -75,38 +74,26 @@ class CollectorService(service.DispatchedService, os_service.Service):
         """Bind the UDP socket and handle incoming data."""
         super(CollectorService, self).start()
         if cfg.CONF.collector.udp_address:
-            self.tg.add_thread(self.start_udp)
+            self.start_udp()
 
         if self.messaging_enabled():
             self.rpc_server.start()
             self.notification_server.start()
 
-            if not cfg.CONF.collector.udp_address:
-                # Add a dummy thread to have wait() working
-                self.tg.add_timer(604800, lambda: None)
+    def wait(self):
+        """Bind the UDP socket and handle incoming data."""
+        super(CollectorService, self).wait()
+        if self.rpc_enabled():
+            self.rpc_server.wait()
 
     def start_udp(self):
         udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         udp.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         udp.bind((cfg.CONF.collector.udp_address,
                   cfg.CONF.collector.udp_port))
-
-        self.udp_run = True
-        while self.udp_run:
-            # NOTE(jd) Arbitrary limit of 64K because that ought to be
-            # enough for anybody.
-            data, source = udp.recvfrom(64 * units.Ki)
-            try:
-                sample = msgpack.loads(data)
-            except Exception:
-                LOG.warn(_("UDP: Cannot decode data sent by %s"), str(source))
-            else:
-                try:
-                    LOG.debug(_("UDP: Storing %s"), str(sample))
-                    self.dispatcher_manager.map_method('record_metering_data',
-                                                       sample)
-                except Exception:
-                    LOG.exception(_("UDP: Unable to store meter"))
+        loop = asyncio.get_event_loop()
+        task = asyncio.Task(loop.create_connection(lambda: self, sock=udp))
+        self.tg.add_task(task)
 
     def stop(self):
         self.udp_run = False
@@ -122,9 +109,8 @@ class CollectorService(service.DispatchedService, os_service.Service):
         bus, this method receives it.
 
         """
-        eventlet.spawn_n(self.dispatcher_manager.map_method,
-                         'record_metering_data',
-                         data=payload)
+        self.dispatcher_manager.map_method('record_metering_data',
+                                           data=payload)
 
     def record_metering_data(self, context, data):
         """RPC endpoint for messages we send to ourselves.
@@ -132,6 +118,25 @@ class CollectorService(service.DispatchedService, os_service.Service):
         When the notification messages are re-published through the
         RPC publisher, this method receives them for processing.
         """
-        eventlet.spawn_n(self.dispatcher_manager.map_method,
-                         'record_metering_data',
-                         data=data)
+        self.dispatcher_manager.map_method('record_metering_data', data=data)
+
+    def data_received(self, data):
+        # NOTE(sileht): trollius use data_received instead of
+        # datagram_received ?
+        self.datagram_received(data, source=None)
+
+    def datagram_received(self, data, source):
+        try:
+            sample = msgpack.loads(data)
+        except Exception:
+            LOG.warn(_("UDP: Cannot decode data sent by %s"), str(source))
+        else:
+            try:
+                LOG.debug(_("UDP: Storing %s"), str(sample))
+                self.dispatcher_manager.map_method('record_metering_data',
+                                                   sample)
+            except Exception:
+                LOG.exception(_("UDP: Unable to store meter"))
+
+    def error_received(self, exc):
+        LOG.error('UDP collector error: %s' % exc)

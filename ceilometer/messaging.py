@@ -26,6 +26,7 @@ _ALIASES = {
     'ceilometer.openstack.common.rpc.impl_qpid': 'qpid',
     'ceilometer.openstack.common.rpc.impl_zmq': 'zmq',
 }
+executor = 'trollius'
 
 
 def setup(url=None):
@@ -53,7 +54,7 @@ def get_rpc_server(topic, endpoint):
     global TRANSPORT
     target = oslo.messaging.Target(server=cfg.CONF.host, topic=topic)
     return oslo.messaging.get_rpc_server(TRANSPORT, target, [endpoint],
-                                         executor='eventlet')
+                                         executor=executor)
 
 
 def get_rpc_client(retry=None, **kwargs):
@@ -72,7 +73,7 @@ def get_notification_listener(targets, endpoints, url=None):
     else:
         transport = TRANSPORT
     return oslo.messaging.get_notification_listener(
-        transport, targets, endpoints, executor='eventlet')
+        transport, targets, endpoints, executor=executor)
 
 
 def get_notifier(publisher_id):
