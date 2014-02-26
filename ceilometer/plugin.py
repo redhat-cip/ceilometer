@@ -23,6 +23,9 @@ import fnmatch
 
 import six
 
+from ceilometer import messaging
+from ceilometer.openstack.common import context
+
 
 class PluginBase(object):
     """Base class for all plugins.
@@ -32,6 +35,8 @@ class PluginBase(object):
 @six.add_metaclass(abc.ABCMeta)
 class NotificationBase(PluginBase):
     """Base class for plugins that support the notification API."""
+    def __init__(self, pipeline_manager):
+        self.pipeline_manager = pipeline_manager
 
     @abc.abstractproperty
     def event_types(self):
@@ -63,17 +68,33 @@ class NotificationBase(PluginBase):
         return any(map(lambda e: fnmatch.fnmatch(event_type, e),
                        event_type_to_handle))
 
-    def to_samples(self, notification):
+    def info(self, ctxt, publisher_id, event_type, payload, metadata):
+        """RPC endpoint for notification messages
+
+        When another service sends a notification over the message
+        bus, this method receives it.
+
+        """
+        notification = messaging.convert_to_old_notification_format(
+            'info', ctxt, publisher_id, event_type, payload, metadata)
+        self.to_samples_and_publish(context.get_admin_context(), notification)
+
+    def to_samples_and_publish(self, context, notification):
         """Return samples produced by *process_notification* for the given
-        notification, if it's handled by this notification handler.
+        notification.
+
+        TODO(sileht): this will be moved into oslo.messaging
+        cf: the oslo.messaging bp notification-dispatcher-filter
 
         :param notification: The notification to process.
 
         """
-        if self._handle_event_type(notification['event_type'],
-                                   self.event_types):
-            return self.process_notification(notification)
-        return []
+        if not self._handle_event_type(notification['event_type'],
+                                       self.event_types):
+            return
+
+        with self.pipeline_manager.publisher(context) as p:
+            p(list(self.process_notification(notification)))
 
 
 @six.add_metaclass(abc.ABCMeta)

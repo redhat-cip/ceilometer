@@ -19,12 +19,13 @@
 
 import mock
 
+import oslo.messaging
 from stevedore import extension
 
-from ceilometer.compute.notifications import instance
+from ceilometer.event import endpoint as event_endpoint
 from ceilometer import messaging
-from ceilometer import notification
 from ceilometer.openstack.common.fixture import config
+from ceilometer.storage import models
 from ceilometer.tests import base as tests_base
 
 TEST_NOTICE_CTXT = {
@@ -79,72 +80,63 @@ TEST_NOTICE_PAYLOAD = {
 }
 
 
-class TestNotification(tests_base.BaseTestCase):
+class TestEventEndpoint(tests_base.BaseTestCase):
 
     def setUp(self):
-        super(TestNotification, self).setUp()
+        super(TestEventEndpoint, self).setUp()
         self.CONF = self.useFixture(config.Config()).conf
+        self.CONF([])
         messaging.setup('fake://')
         self.addCleanup(messaging.cleanup)
         self.CONF.set_override("connection", "log://", group='database')
-        self.srv = notification.NotificationService()
+        self.endpoint = event_endpoint.EventsNotificationEndpoint()
 
-    def fake_get_notifications_manager(self, pm):
-        self.plugin = instance.Instance(pm)
+    def _make_test_manager(self, plugin):
         return extension.ExtensionManager.make_test_instance(
             [
                 extension.Extension('test',
                                     None,
                                     None,
-                                    self.plugin)
+                                    plugin)
             ]
         )
 
-    @mock.patch('ceilometer.pipeline.setup_pipeline', mock.MagicMock())
-    def test_process_notification(self):
-        self.CONF.set_override("store_events", False, group="notification")
-
-        with mock.patch.object(self.srv, '_get_notifications_manager') \
-                as get_nm:
-            get_nm.side_effect = self.fake_get_notifications_manager
-            self.srv.start()
-
-        self.srv.pipeline_manager.pipelines[0] = mock.MagicMock()
-
-        self.plugin.info(TEST_NOTICE_CTXT, 'compute.vagrant-precise',
-                         'compute.instance.create.end',
-                         TEST_NOTICE_PAYLOAD, TEST_NOTICE_METADATA)
-
-        self.assertEqual(len(self.srv.listener.dispatcher.endpoints), 1)
-        self.assertTrue(
-            self.srv.pipeline_manager.publisher.called)
-
-    @mock.patch('ceilometer.pipeline.setup_pipeline', mock.MagicMock())
-    @mock.patch('ceilometer.event.endpoint.EventsNotificationEndpoint')
-    def test_process_notification_no_events(self, fake_event_endpoint_class):
-        self.CONF.set_override("store_events", False, group="notification")
-
-        fake_event_endpoint = fake_event_endpoint_class.return_value
-        with mock.patch.object(self.srv, '_get_notifications_manager') \
-                as get_nm:
-            get_nm.side_effect = self.fake_get_notifications_manager
-            self.srv.start()
-
-        self.assertEqual(len(self.srv.listener.dispatcher.endpoints), 1)
-        self.assertNotEqual(self.srv.listener.dispatcher.endpoints[0],
-                            fake_event_endpoint)
-
-    @mock.patch('ceilometer.pipeline.setup_pipeline', mock.MagicMock())
-    @mock.patch('ceilometer.event.endpoint.EventsNotificationEndpoint',
-                autospec=True)
-    def test_process_notification_with_events(self, fake_event_endpoint_class):
+    def test_message_to_event(self):
         self.CONF.set_override("store_events", True, group="notification")
-        fake_event_endpoint = fake_event_endpoint_class.return_value
-        with mock.patch.object(self.srv, '_get_notifications_manager') \
-                as get_nm:
-            get_nm.side_effect = self.fake_get_notifications_manager
-            self.srv.start()
+        self.endpoint.event_converter = mock.MagicMock()
+        self.endpoint.event_converter.to_event.return_value = mock.MagicMock(
+            event_type='test.test')
+        self.endpoint.dispatcher_manager = self._make_test_manager(
+            mock.MagicMock())
+        self.endpoint.info(TEST_NOTICE_CTXT, 'compute.vagrant-precise',
+                           'compute.instance.create.end',
+                           TEST_NOTICE_PAYLOAD, TEST_NOTICE_METADATA)
 
-        self.assertEqual(len(self.srv.listener.dispatcher.endpoints), 2)
-        self.assertEqual(self.srv.listener.dispatcher.endpoints[0],
-                         fake_event_endpoint)
+    def test_message_to_event_duplicate(self):
+        self.CONF.set_override("store_events", True, group="notification")
+        mock_dispatcher = mock.MagicMock()
+        self.endpoint.event_converter = mock.MagicMock()
+        self.endpoint.event_converter.to_event.return_value = mock.MagicMock(
+            event_type='test.test')
+        self.endpoint.dispatcher_manager = self._make_test_manager(
+            mock_dispatcher)
+        mock_dispatcher.record_events.return_value = [
+            (models.Event.DUPLICATE, object())]
+        message = {'event_type': "foo", 'message_id': "abc"}
+        self.endpoint.process_notification(message)  # Should return silently.
+
+    def test_message_to_event_bad_event(self):
+        self.CONF.set_override("store_events", True, group="notification")
+        self.CONF.set_override("ack_on_event_error", False,
+                               group="notification")
+        mock_dispatcher = mock.MagicMock()
+        self.endpoint.event_converter = mock.MagicMock()
+        self.endpoint.event_converter.to_event.return_value = mock.MagicMock(
+            event_type='test.test')
+        self.endpoint.dispatcher_manager = self._make_test_manager(
+            mock_dispatcher)
+        mock_dispatcher.record_events.return_value = [
+            (models.Event.UNKNOWN_PROBLEM, object())]
+        message = {'event_type': "foo", 'message_id': "abc"}
+        ret = self.endpoint.process_notification(message)
+        self.assertEqual(ret, oslo.messaging.NotificationResult.REQUEUE)

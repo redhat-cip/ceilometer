@@ -10,6 +10,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import mock
+
 from ceilometer.openstack.common import test
 from ceilometer.volume import notifications
 
@@ -111,7 +113,7 @@ class TestNotifications(test.BaseTestCase):
         self.assertEqual(metadata.get('host'), notification['publisher_id'])
 
     def test_volume_exists(self):
-        v = notifications.Volume()
+        v = notifications.Volume(mock.Mock())
         samples = list(v.process_notification(NOTIFICATION_VOLUME_EXISTS))
         self.assertEqual(len(samples), 1)
         s = samples[0]
@@ -119,7 +121,7 @@ class TestNotifications(test.BaseTestCase):
         self.assertEqual(s.volume, 1)
 
     def test_volume_size_exists(self):
-        v = notifications.VolumeSize()
+        v = notifications.VolumeSize(mock.Mock())
         samples = list(v.process_notification(NOTIFICATION_VOLUME_EXISTS))
         self.assertEqual(len(samples), 1)
         s = samples[0]
@@ -129,7 +131,7 @@ class TestNotifications(test.BaseTestCase):
                          NOTIFICATION_VOLUME_EXISTS['payload']['size'])
 
     def test_volume_delete(self):
-        v = notifications.Volume()
+        v = notifications.Volume(mock.Mock())
         samples = list(v.process_notification(NOTIFICATION_VOLUME_DELETE))
         self.assertEqual(len(samples), 1)
         s = samples[0]
@@ -137,7 +139,7 @@ class TestNotifications(test.BaseTestCase):
         self.assertEqual(s.volume, 1)
 
     def test_volume_size_delete(self):
-        v = notifications.VolumeSize()
+        v = notifications.VolumeSize(mock.Mock())
         samples = list(v.process_notification(NOTIFICATION_VOLUME_DELETE))
         self.assertEqual(len(samples), 1)
         s = samples[0]
@@ -147,7 +149,7 @@ class TestNotifications(test.BaseTestCase):
                          NOTIFICATION_VOLUME_DELETE['payload']['size'])
 
     def test_volume_resize(self):
-        v = notifications.Volume()
+        v = notifications.Volume(mock.Mock())
         samples = list(v.process_notification(NOTIFICATION_VOLUME_RESIZE))
         self.assertEqual(len(samples), 1)
         s = samples[0]
@@ -155,7 +157,7 @@ class TestNotifications(test.BaseTestCase):
         self.assertEqual(s.volume, 1)
 
     def test_volume_size_resize(self):
-        v = notifications.VolumeSize()
+        v = notifications.VolumeSize(mock.Mock())
         samples = list(v.process_notification(NOTIFICATION_VOLUME_RESIZE))
         self.assertEqual(len(samples), 1)
         s = samples[0]

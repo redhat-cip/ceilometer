@@ -18,6 +18,8 @@
 """Tests for ceilometer.network.notifications
 """
 
+import mock
+
 from ceilometer.network import notifications
 from ceilometer.openstack.common import test
 
@@ -250,53 +252,53 @@ NOTIFICATION_L3_METER = {
 
 class TestNotifications(test.BaseTestCase):
     def test_network_create(self):
-        v = notifications.Network()
+        v = notifications.Network(mock.Mock())
         samples = list(v.process_notification(NOTIFICATION_NETWORK_CREATE))
         self.assertEqual(len(samples), 2)
         self.assertEqual(samples[1].name, "network.create")
 
     def test_subnet_create(self):
-        v = notifications.Subnet()
+        v = notifications.Subnet(mock.Mock())
         samples = list(v.process_notification(NOTIFICATION_SUBNET_CREATE))
         self.assertEqual(len(samples), 2)
         self.assertEqual(samples[1].name, "subnet.create")
 
     def test_port_create(self):
-        v = notifications.Port()
+        v = notifications.Port(mock.Mock())
         samples = list(v.process_notification(NOTIFICATION_PORT_CREATE))
         self.assertEqual(len(samples), 2)
         self.assertEqual(samples[1].name, "port.create")
 
     def test_port_update(self):
-        v = notifications.Port()
+        v = notifications.Port(mock.Mock())
         samples = list(v.process_notification(NOTIFICATION_PORT_UPDATE))
         self.assertEqual(len(samples), 2)
         self.assertEqual(samples[1].name, "port.update")
 
     def test_network_exists(self):
-        v = notifications.Network()
+        v = notifications.Network(mock.Mock())
         samples = v.process_notification(NOTIFICATION_NETWORK_EXISTS)
         self.assertEqual(len(list(samples)), 1)
 
     def test_router_exists(self):
-        v = notifications.Router()
+        v = notifications.Router(mock.Mock())
         samples = v.process_notification(NOTIFICATION_ROUTER_EXISTS)
         self.assertEqual(len(list(samples)), 1)
 
     def test_floatingip_exists(self):
-        v = notifications.FloatingIP()
+        v = notifications.FloatingIP(mock.Mock())
         samples = list(v.process_notification(NOTIFICATION_FLOATINGIP_EXISTS))
         self.assertEqual(len(samples), 1)
         self.assertEqual(samples[0].name, "ip.floating")
 
     def test_floatingip_update(self):
-        v = notifications.FloatingIP()
+        v = notifications.FloatingIP(mock.Mock())
         samples = list(v.process_notification(NOTIFICATION_FLOATINGIP_UPDATE))
         self.assertEqual(len(samples), 2)
         self.assertEqual(samples[0].name, "ip.floating")
 
     def test_metering_report(self):
-        v = notifications.Bandwidth()
+        v = notifications.Bandwidth(mock.Mock())
         samples = list(v.process_notification(NOTIFICATION_L3_METER))
         self.assertEqual(len(samples), 1)
         self.assertEqual(samples[0].name, "bandwidth")
@@ -305,25 +307,25 @@ class TestNotifications(test.BaseTestCase):
 class TestEventTypes(test.BaseTestCase):
 
     def test_network(self):
-        v = notifications.Network()
+        v = notifications.Network(mock.Mock())
         events = v.event_types
         assert events
 
     def test_subnet(self):
-        v = notifications.Subnet()
+        v = notifications.Subnet(mock.Mock())
         events = v.event_types
         assert events
 
     def test_port(self):
-        v = notifications.Port()
+        v = notifications.Port(mock.Mock())
         events = v.event_types
         assert events
 
     def test_router(self):
-        self.assertTrue(notifications.Router().event_types)
+        self.assertTrue(notifications.Router(mock.Mock()).event_types)
 
     def test_floatingip(self):
-        self.assertTrue(notifications.FloatingIP().event_types)
+        self.assertTrue(notifications.FloatingIP(mock.Mock()).event_types)
 
     def test_bandwidth(self):
-        self.assertTrue(notifications.Bandwidth().event_types)
+        self.assertTrue(notifications.Bandwidth(mock.Mock()).event_types)

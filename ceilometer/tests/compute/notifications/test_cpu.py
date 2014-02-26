@@ -100,7 +100,7 @@ class TestMetricsNotifications(test.BaseTestCase):
     def test_compute_metrics(self):
         ERROR_METRICS = copy.copy(METRICS_UPDATE)
         ERROR_METRICS['payload'] = {"metric_err": []}
-        ic = cpu.CpuFrequency()
+        ic = cpu.CpuFrequency(None)
         info = ic._get_sample(METRICS_UPDATE, 'cpu.frequency')
         info_none = ic._get_sample(METRICS_UPDATE, 'abc.efg')
         info_error = ic._get_sample(ERROR_METRICS, 'cpu.frequency')
@@ -109,51 +109,51 @@ class TestMetricsNotifications(test.BaseTestCase):
         self.assertIsNone(info_error)
 
     def test_compute_cpu_frequency(self):
-        c = self._process_notification(cpu.CpuFrequency())
+        c = self._process_notification(cpu.CpuFrequency(None))
         self.assertEqual(c.name, 'compute.node.cpu.frequency')
         self.assertEqual(c.volume, 1600)
 
     def test_compute_cpu_user_time(self):
-        c = self._process_notification(cpu.CpuUserTime())
+        c = self._process_notification(cpu.CpuUserTime(None))
         self.assertEqual(c.name, 'compute.node.cpu.user.time')
         self.assertEqual(c.volume, 17421440000000L)
 
     def test_compute_cpu_kernel_time(self):
-        c = self._process_notification(cpu.CpuKernelTime())
+        c = self._process_notification(cpu.CpuKernelTime(None))
         self.assertEqual(c.name, 'compute.node.cpu.kernel.time')
         self.assertEqual(c.volume, 7852600000000L)
 
     def test_compute_cpu_idle_time(self):
-        c = self._process_notification(cpu.CpuIdleTime())
+        c = self._process_notification(cpu.CpuIdleTime(None))
         self.assertEqual(c.name, 'compute.node.cpu.idle.time')
         self.assertEqual(c.volume, 1307374400000000L)
 
     def test_compute_cpu_iowait_time(self):
-        c = self._process_notification(cpu.CpuIowaitTime())
+        c = self._process_notification(cpu.CpuIowaitTime(None))
         self.assertEqual(c.name, 'compute.node.cpu.iowait.time')
         self.assertEqual(c.volume, 11697470000000L)
 
     def test_compute_cpu_kernel_percent(self):
-        c = self._process_notification(cpu.CpuKernelPercent())
+        c = self._process_notification(cpu.CpuKernelPercent(None))
         self.assertEqual(c.name, 'compute.node.cpu.kernel.percent')
         self.assertEqual(c.volume, 0.5841204961898534)
 
     def test_compute_cpu_idle_percent(self):
-        c = self._process_notification(cpu.CpuIdlePercent())
+        c = self._process_notification(cpu.CpuIdlePercent(None))
         self.assertEqual(c.name, 'compute.node.cpu.idle.percent')
         self.assertEqual(c.volume, 97.24985141658965)
 
     def test_compute_cpu_user_percent(self):
-        c = self._process_notification(cpu.CpuUserPercent())
+        c = self._process_notification(cpu.CpuUserPercent(None))
         self.assertEqual(c.name, 'compute.node.cpu.user.percent')
         self.assertEqual(c.volume, 1.2959045637294348)
 
     def test_compute_cpu_iowait_percent(self):
-        c = self._process_notification(cpu.CpuIowaitPercent())
+        c = self._process_notification(cpu.CpuIowaitPercent(None))
         self.assertEqual(c.name, 'compute.node.cpu.iowait.percent')
         self.assertEqual(c.volume, 0.8701235234910634)
 
     def test_compute_cpu_percent(self):
-        c = self._process_notification(cpu.CpuPercent())
+        c = self._process_notification(cpu.CpuPercent(None))
         self.assertEqual(c.name, 'compute.node.cpu.percent')
         self.assertEqual(c.volume, 2.7501485834103515)

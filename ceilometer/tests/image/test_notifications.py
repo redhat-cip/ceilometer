@@ -19,6 +19,8 @@
 
 import datetime
 
+import mock
+
 from ceilometer.image import notifications
 from ceilometer.openstack.common import test
 from ceilometer import sample
@@ -101,7 +103,7 @@ class TestNotification(test.BaseTestCase):
         self.assertEqual(metadata.get('host'), u'images.example.com')
 
     def test_image_download(self):
-        handler = notifications.ImageDownload()
+        handler = notifications.ImageDownload(mock.Mock())
         counters = list(handler.process_notification(NOTIFICATION_SEND))
         self.assertEqual(len(counters), 1)
         download = counters[0]
@@ -111,7 +113,7 @@ class TestNotification(test.BaseTestCase):
         self.assertEqual(download.type, sample.TYPE_DELTA)
 
     def test_image_serve(self):
-        handler = notifications.ImageServe()
+        handler = notifications.ImageServe(mock.Mock())
         counters = list(handler.process_notification(NOTIFICATION_SEND))
         self.assertEqual(len(counters), 1)
         serve = counters[0]
@@ -124,7 +126,7 @@ class TestNotification(test.BaseTestCase):
         self.assertEqual(serve.type, sample.TYPE_DELTA)
 
     def test_image_crud_on_update(self):
-        handler = notifications.ImageCRUD()
+        handler = notifications.ImageCRUD(mock.Mock())
         counters = list(handler.process_notification(NOTIFICATION_UPDATE))
         self.assertEqual(len(counters), 1)
         update = counters[0]
@@ -132,7 +134,7 @@ class TestNotification(test.BaseTestCase):
         self.assertEqual(update.type, sample.TYPE_DELTA)
 
     def test_image_on_update(self):
-        handler = notifications.Image()
+        handler = notifications.Image(mock.Mock())
         counters = list(handler.process_notification(NOTIFICATION_UPDATE))
         self.assertEqual(len(counters), 1)
         update = counters[0]
@@ -140,7 +142,7 @@ class TestNotification(test.BaseTestCase):
         self.assertEqual(update.type, sample.TYPE_GAUGE)
 
     def test_image_size_on_update(self):
-        handler = notifications.ImageSize()
+        handler = notifications.ImageSize(mock.Mock())
         counters = list(handler.process_notification(NOTIFICATION_UPDATE))
         self.assertEqual(len(counters), 1)
         update = counters[0]
@@ -149,7 +151,7 @@ class TestNotification(test.BaseTestCase):
         self.assertEqual(update.type, sample.TYPE_GAUGE)
 
     def test_image_crud_on_upload(self):
-        handler = notifications.ImageCRUD()
+        handler = notifications.ImageCRUD(mock.Mock())
         counters = list(handler.process_notification(NOTIFICATION_UPLOAD))
         self.assertEqual(len(counters), 1)
         upload = counters[0]
@@ -157,7 +159,7 @@ class TestNotification(test.BaseTestCase):
         self.assertEqual(upload.type, sample.TYPE_DELTA)
 
     def test_image_on_upload(self):
-        handler = notifications.Image()
+        handler = notifications.Image(mock.Mock())
         counters = list(handler.process_notification(NOTIFICATION_UPLOAD))
         self.assertEqual(len(counters), 1)
         upload = counters[0]
@@ -165,7 +167,7 @@ class TestNotification(test.BaseTestCase):
         self.assertEqual(upload.type, sample.TYPE_GAUGE)
 
     def test_image_size_on_upload(self):
-        handler = notifications.ImageSize()
+        handler = notifications.ImageSize(mock.Mock())
         counters = list(handler.process_notification(NOTIFICATION_UPLOAD))
         self.assertEqual(len(counters), 1)
         upload = counters[0]
@@ -174,7 +176,7 @@ class TestNotification(test.BaseTestCase):
         self.assertEqual(upload.type, sample.TYPE_GAUGE)
 
     def test_image_crud_on_delete(self):
-        handler = notifications.ImageCRUD()
+        handler = notifications.ImageCRUD(mock.Mock())
         counters = list(handler.process_notification(NOTIFICATION_DELETE))
         self.assertEqual(len(counters), 1)
         delete = counters[0]
@@ -182,7 +184,7 @@ class TestNotification(test.BaseTestCase):
         self.assertEqual(delete.type, sample.TYPE_DELTA)
 
     def test_image_on_delete(self):
-        handler = notifications.Image()
+        handler = notifications.Image(mock.Mock())
         counters = list(handler.process_notification(NOTIFICATION_DELETE))
         self.assertEqual(len(counters), 1)
         delete = counters[0]
@@ -190,7 +192,7 @@ class TestNotification(test.BaseTestCase):
         self.assertEqual(delete.type, sample.TYPE_GAUGE)
 
     def test_image_size_on_delete(self):
-        handler = notifications.ImageSize()
+        handler = notifications.ImageSize(mock.Mock())
         counters = list(handler.process_notification(NOTIFICATION_DELETE))
         self.assertEqual(len(counters), 1)
         delete = counters[0]

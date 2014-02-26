@@ -16,6 +16,8 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import mock
+
 from ceilometer import middleware
 from ceilometer.openstack.common.fixture import config
 from ceilometer.openstack.common import test
@@ -74,7 +76,7 @@ class TestNotifications(test.BaseTestCase):
         self.CONF = self.useFixture(config.Config()).conf
 
     def test_process_request_notification(self):
-        sample = list(middleware.HTTPRequest().process_notification(
+        sample = list(middleware.HTTPRequest(mock.Mock()).process_notification(
             HTTP_REQUEST
         ))[0]
         self.assertEqual(sample.user_id,
@@ -88,9 +90,8 @@ class TestNotifications(test.BaseTestCase):
         self.assertEqual(sample.volume, 1)
 
     def test_process_response_notification(self):
-        sample = list(middleware.HTTPResponse().process_notification(
-            HTTP_RESPONSE
-        ))[0]
+        sample = list(middleware.HTTPResponse(
+            mock.Mock()).process_notification(HTTP_RESPONSE))[0]
         self.assertEqual(sample.user_id,
                          HTTP_RESPONSE['payload']['request']['HTTP_X_USER_ID'])
         self.assertEqual(sample.project_id,
@@ -102,5 +103,5 @@ class TestNotifications(test.BaseTestCase):
         self.assertEqual(sample.volume, 1)
 
     def test_targets(self):
-        targets = middleware.HTTPRequest().get_targets(self.CONF)
+        targets = middleware.HTTPRequest(mock.Mock()).get_targets(self.CONF)
         self.assertEqual(len(targets), 4)
