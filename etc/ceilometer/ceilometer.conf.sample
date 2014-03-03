@@ -857,6 +857,11 @@
 # Save event details. (boolean value)
 #store_events=false
 
+# Messaging urls to listen for notifications. example:
+# transport://user:pass@host1:port[,hostN:portN]/virtual_host
+# (DEFAULT/transport_url is used if empty) (multi valued)
+#messaging_urls=
+
 
 [publisher]
 

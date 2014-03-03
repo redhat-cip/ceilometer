@@ -101,6 +101,14 @@ class TestNotification(tests_base.BaseTestCase):
         )
 
     @mock.patch('ceilometer.pipeline.setup_pipeline', mock.MagicMock())
+    def test_start_multiple_listeners(self):
+        urls = ["fake://", "fake://"]
+        self.CONF.set_override("store_events", False, group="notification")
+        self.CONF.set_override("messaging_urls", urls, group="notification")
+        self.srv.start()
+        self.assertEqual(len(self.srv.listeners), 2)
+
+    @mock.patch('ceilometer.pipeline.setup_pipeline', mock.MagicMock())
     def test_process_notification(self):
         self.CONF.set_override("store_events", False, group="notification")
 
@@ -115,7 +123,7 @@ class TestNotification(tests_base.BaseTestCase):
                          'compute.instance.create.end',
                          TEST_NOTICE_PAYLOAD, TEST_NOTICE_METADATA)
 
-        self.assertEqual(len(self.srv.listener.dispatcher.endpoints), 1)
+        self.assertEqual(len(self.srv.listeners[0].dispatcher.endpoints), 1)
         self.assertTrue(
             self.srv.pipeline_manager.publisher.called)
 
@@ -130,8 +138,8 @@ class TestNotification(tests_base.BaseTestCase):
             get_nm.side_effect = self.fake_get_notifications_manager
             self.srv.start()
 
-        self.assertEqual(len(self.srv.listener.dispatcher.endpoints), 1)
-        self.assertNotEqual(self.srv.listener.dispatcher.endpoints[0],
+        self.assertEqual(len(self.srv.listeners[0].dispatcher.endpoints), 1)
+        self.assertNotEqual(self.srv.listeners[0].dispatcher.endpoints[0],
                             fake_event_endpoint)
 
     @mock.patch('ceilometer.pipeline.setup_pipeline', mock.MagicMock())
@@ -145,6 +153,6 @@ class TestNotification(tests_base.BaseTestCase):
             get_nm.side_effect = self.fake_get_notifications_manager
             self.srv.start()
 
-        self.assertEqual(len(self.srv.listener.dispatcher.endpoints), 2)
-        self.assertEqual(self.srv.listener.dispatcher.endpoints[0],
+        self.assertEqual(len(self.srv.listeners[0].dispatcher.endpoints), 2)
+        self.assertEqual(self.srv.listeners[0].dispatcher.endpoints[0],
                          fake_event_endpoint)
