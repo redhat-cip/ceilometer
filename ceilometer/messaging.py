@@ -56,11 +56,11 @@ def get_rpc_server(topic, endpoint):
                                          executor='eventlet')
 
 
-def get_rpc_client(**kwargs):
+def get_rpc_client(retry=None, **kwargs):
     """Return a configured oslo.messaging RPCClient."""
     global TRANSPORT
     target = oslo.messaging.Target(**kwargs)
-    return oslo.messaging.RPCClient(TRANSPORT, target)
+    return oslo.messaging.RPCClient(TRANSPORT, target, retry=retry)
 
 
 def get_notification_listener(targets, endpoints, url=None):

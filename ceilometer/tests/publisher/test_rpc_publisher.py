@@ -23,7 +23,6 @@ import datetime
 import eventlet
 import mock
 import oslo.messaging
-import oslo.messaging._drivers.common
 
 from ceilometer import messaging
 from ceilometer.openstack.common.fixture import config
@@ -195,12 +194,12 @@ class TestPublish(test.BaseTestCase):
     def test_published_with_no_policy(self, mylog):
         publisher = rpc.RPCPublisher(
             network_utils.urlsplit('rpc://'))
-        side_effect = oslo.messaging._drivers.common.RPCException()
+        side_effect = oslo.messaging.MessagingDisconnected()
         with mock.patch.object(publisher.rpc_client, 'prepare') as prepare:
             prepare.side_effect = side_effect
 
             self.assertRaises(
-                oslo.messaging._drivers.common.RPCException,
+                oslo.messaging.MessagingDisconnected,
                 publisher.publish_samples,
                 mock.MagicMock(), self.test_data)
             self.assertTrue(mylog.info.called)
@@ -213,11 +212,11 @@ class TestPublish(test.BaseTestCase):
     def test_published_with_policy_block(self, mylog):
         publisher = rpc.RPCPublisher(
             network_utils.urlsplit('rpc://?policy=default'))
-        side_effect = oslo.messaging._drivers.common.RPCException()
+        side_effect = oslo.messaging.MessagingDisconnected()
         with mock.patch.object(publisher.rpc_client, 'prepare') as prepare:
             prepare.side_effect = side_effect
             self.assertRaises(
-                oslo.messaging._drivers.common.RPCException,
+                oslo.messaging.MessagingDisconnected,
                 publisher.publish_samples,
                 mock.MagicMock(), self.test_data)
             self.assertTrue(mylog.info.called)
@@ -229,11 +228,11 @@ class TestPublish(test.BaseTestCase):
     def test_published_with_policy_incorrect(self, mylog):
         publisher = rpc.RPCPublisher(
             network_utils.urlsplit('rpc://?policy=notexist'))
-        side_effect = oslo.messaging._drivers.common.RPCException()
+        side_effect = oslo.messaging.MessagingDisconnected()
         with mock.patch.object(publisher.rpc_client, 'prepare') as prepare:
             prepare.side_effect = side_effect
             self.assertRaises(
-                oslo.messaging._drivers.common.RPCException,
+                oslo.messaging.MessagingDisconnected,
                 publisher.publish_samples,
                 mock.MagicMock(), self.test_data)
             self.assertTrue(mylog.warn.called)
@@ -245,7 +244,7 @@ class TestPublish(test.BaseTestCase):
     def test_published_with_policy_drop_and_rpc_down(self):
         publisher = rpc.RPCPublisher(
             network_utils.urlsplit('rpc://?policy=drop'))
-        side_effect = oslo.messaging._drivers.common.RPCException()
+        side_effect = oslo.messaging.MessagingDisconnected()
         with mock.patch.object(publisher.rpc_client, 'prepare') as prepare:
             prepare.side_effect = side_effect
             publisher.publish_samples(mock.MagicMock(),
@@ -257,7 +256,7 @@ class TestPublish(test.BaseTestCase):
     def test_published_with_policy_queue_and_rpc_down(self):
         publisher = rpc.RPCPublisher(
             network_utils.urlsplit('rpc://?policy=queue'))
-        side_effect = oslo.messaging._drivers.common.RPCException()
+        side_effect = oslo.messaging.MessagingDisconnected()
         with mock.patch.object(publisher.rpc_client, 'prepare') as prepare:
             prepare.side_effect = side_effect
 
@@ -272,7 +271,7 @@ class TestPublish(test.BaseTestCase):
         publisher = rpc.RPCPublisher(
             network_utils.urlsplit('rpc://?policy=queue'))
 
-        side_effect = oslo.messaging._drivers.common.RPCException()
+        side_effect = oslo.messaging.MessagingDisconnected()
         with mock.patch.object(publisher.rpc_client, 'prepare') as prepare:
             prepare.side_effect = side_effect
             publisher.publish_samples(mock.MagicMock(),
@@ -296,7 +295,7 @@ class TestPublish(test.BaseTestCase):
         publisher = rpc.RPCPublisher(
             network_utils.urlsplit('rpc://?policy=queue&max_queue_length=3'))
 
-        side_effect = oslo.messaging._drivers.common.RPCException()
+        side_effect = oslo.messaging.MessagingDisconnected()
         with mock.patch.object(publisher.rpc_client, 'prepare') as prepare:
             prepare.side_effect = side_effect
             for i in range(0, 5):
@@ -323,7 +322,7 @@ class TestPublish(test.BaseTestCase):
         publisher = rpc.RPCPublisher(
             network_utils.urlsplit('rpc://?policy=queue'))
 
-        side_effect = oslo.messaging._drivers.common.RPCException()
+        side_effect = oslo.messaging.MessagingDisconnected()
         with mock.patch.object(publisher.rpc_client, 'prepare') as prepare:
             prepare.side_effect = side_effect
             for i in range(0, 2000):

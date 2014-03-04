@@ -108,10 +108,6 @@
 # RabbitMQ. (integer value)
 #rabbit_retry_backoff=2
 
-# Maximum number of RabbitMQ connection retries. Default is 0
-# (infinite retry count). (integer value)
-#rabbit_max_retries=0
-
 # Use HA queues in RabbitMQ (x-ha-policy: all). If you change
 # this option, you must wipe the RabbitMQ database. (boolean
 # value)
@@ -192,6 +188,11 @@
 # overridden by an exchange name specified in the
 # transport_url option. (string value)
 #control_exchange=openstack
+
+# Maximum number of transport connection retries. Default is 0
+# (infinite retry count) (integer value)
+# Deprecated group/name - [DEFAULT]/rabbit_max_retries
+#transport_connection_retries=0
 
 
 #

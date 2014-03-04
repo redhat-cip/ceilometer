@@ -1,12 +1,22 @@
 #!/bin/bash
 set -e
 
+
+
 function clean_exit(){
     local error_code="$?"
     rm -rf ${MONGO_DATA}
+    rm -rf ${OSLO_HACK}
     kill $(jobs -p)
     return $error_code
 }
+
+# Install unreleased/unmerged oslo version
+OSLO_HACK=`mktemp -d /tmp/CEILO-OSLO-XXXXX`
+pip uninstall --yes oslo.messaging || true
+git clone git://github.com/enovance/oslo.messaging.git -b sileht/oslo.messaging-work $OSLO_HACK
+(cd $OSLO_HACK ; python setup.py install)
+
 
 # Setup MongoDB test server
 MONGO_DATA=`mktemp -d /tmp/CEILO-MONGODB-XXXXX`

@@ -25,7 +25,6 @@ import six.moves.urllib.parse as urlparse
 
 from oslo.config import cfg
 import oslo.messaging
-import oslo.messaging._drivers.common
 
 from ceilometer import messaging
 from ceilometer.openstack.common.gettextutils import _  # noqa
@@ -54,30 +53,6 @@ def register_opts(config):
 register_opts(cfg.CONF)
 
 
-def oslo_messaging_is_rabbit():
-    kombu = ['ceilometer.openstack.common.rpc.impl_kombu',
-             'oslo.messaging._drivers.impl_rabbit:RabbitDriver'
-             'rabbit']
-    return cfg.CONF.rpc_backend in kombu or (
-        cfg.CONF.transport_url and
-        cfg.CONF.transport_url.startswith('rabbit://'))
-
-
-def override_backend_retry_config(value):
-    """Override the retry config option native to the configured
-       rpc backend (if such a native config option exists).
-
-       :param value: the value to override
-    """
-    # TODO(sileht): ultimately we should add to olso a more generic concept
-    # of retry config (i.e. not specific to an individual AMQP provider)
-    # see: https://bugs.launchpad.net/ceilometer/+bug/1244698
-    # and: https://bugs.launchpad.net/oslo.messaging/+bug/1282639
-    if oslo_messaging_is_rabbit():
-        if 'rabbit_max_retries' in cfg.CONF:
-            cfg.CONF.set_override('rabbit_max_retries', value)
-
-
 class RPCPublisher(publisher.PublisherBase):
 
     def __init__(self, parsed_url):
@@ -96,18 +71,17 @@ class RPCPublisher(publisher.PublisherBase):
 
         self.local_queue = []
 
-        if self.policy in ['queue', 'drop']:
-            LOG.info(_('Publishing policy set to %s, \
-                     override backend retry config to 1') % self.policy)
-            override_backend_retry_config(1)
-        elif self.policy == 'default':
+        if self.policy in ['default', 'queue', 'drop']:
             LOG.info(_('Publishing policy set to %s') % self.policy)
         else:
             LOG.warn(_('Publishing policy is unknown (%s) force to default')
                      % self.policy)
             self.policy = 'default'
 
-        self.rpc_client = messaging.get_rpc_client(version='1.0')
+        retry = None
+        if self.policy in ['queue', 'drop']:
+            retry = 1
+        self.rpc_client = messaging.get_rpc_client(retry=retry, version='1.0')
 
     def publish_samples(self, context, samples):
         """Publish samples on RPC.
@@ -164,22 +138,12 @@ class RPCPublisher(publisher.PublisherBase):
                      "dropping %d oldest samples") % count)
 
     def _process_queue(self, queue, policy):
-        #note(sileht):
-        # the behavior of rpc.cast call depends of rabbit_max_retries
-        # if rabbit_max_retries <= 0:
-        #   it returns only if the msg has been sent on the amqp queue
-        # if rabbit_max_retries > 0:
-        #   it raises a exception if rabbitmq is unreachable
-        #
-        # the default policy just respect the rabbitmq configuration
-        # nothing special is done if rabbit_max_retries <= 0
-        # and exception is reraised if rabbit_max_retries > 0
         while queue:
             context, topic, meters = queue[0]
             try:
                 self.rpc_client.prepare(topic=topic).cast(
                     context.to_dict(), self.target, data=meters)
-            except oslo.messaging._drivers.common.RPCException:
+            except oslo.messaging.MessagingDisconnected:
                 samples = sum([len(m) for __, __, m in queue])
                 if policy == 'queue':
                     LOG.warn(_("Failed to publish %d samples, queue them"),
