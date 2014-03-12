@@ -148,7 +148,8 @@ class TestCollector(tests_base.BaseTestCase):
         # returns. Mock it out so we can establish the service
         # configuration.
         with mock.patch.object(self.srv.rpc_server, 'start'):
-            self.srv.start()
+            with mock.patch.object(self.srv.notification_server, 'start'):
+                self.srv.start()
 
     def test_only_udp(self):
         """Check that only UDP is started if rpc_backend is empty."""

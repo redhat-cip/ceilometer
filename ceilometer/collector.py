@@ -21,6 +21,7 @@ import socket
 
 import msgpack
 from oslo.config import cfg
+import oslo.messaging
 
 from ceilometer import messaging
 from ceilometer.openstack.common.gettextutils import _  # noqa
@@ -40,8 +41,10 @@ OPTS = [
 ]
 
 cfg.CONF.register_opts(OPTS, group="collector")
-cfg.CONF.import_opt('metering_topic', 'ceilometer.publisher.rpc',
+cfg.CONF.import_opt('metering_topic', 'ceilometer.publisher.messaging',
                     group="publisher_rpc")
+cfg.CONF.import_opt('metering_topic', 'ceilometer.publisher.messaging',
+                    group="publisher_notifier")
 
 
 LOG = log.getLogger(__name__)
@@ -52,15 +55,19 @@ class CollectorService(service.DispatchedService, os_service.Service):
 
     def __init__(self):
         super(CollectorService, self).__init__()
-        if self.rpc_enabled():
+        if self.messaging_enabled():
             # FIXME(sileht): oslo.messaging force us to have the same
             # queue and topic name, Should we add ceilometer.collector
             # to the topic ?
             self.rpc_server = messaging.get_rpc_server(
                 cfg.CONF.publisher_rpc.metering_topic, self)
+            target = oslo.messaging.Target(
+                topic=cfg.CONF.publisher_notifier.metering_topic)
+            self.notification_server = messaging.get_notification_listener(
+                [target], [self])
 
     @staticmethod
-    def rpc_enabled():
+    def messaging_enabled():
         # cfg.CONF opt from oslo.messaging.transport
         return cfg.CONF.rpc_backend or cfg.CONF.transport_url
 
@@ -70,8 +77,9 @@ class CollectorService(service.DispatchedService, os_service.Service):
         if cfg.CONF.collector.udp_address:
             self.tg.add_thread(self.start_udp)
 
-        if self.rpc_enabled():
+        if self.messaging_enabled():
             self.rpc_server.start()
+            self.notification_server.start()
 
             if not cfg.CONF.collector.udp_address:
                 # Add a dummy thread to have wait() working
@@ -102,9 +110,21 @@ class CollectorService(service.DispatchedService, os_service.Service):
 
     def stop(self):
         self.udp_run = False
-        if self.rpc_enabled():
+        if self.messaging_enabled():
             self.rpc_server.stop()
+            self.notification_server.stop()
         super(CollectorService, self).stop()
+
+    def sample(self, ctxt, publisher_id, event_type, payload, metadata):
+        """RPC endpoint for notification messages
+
+        When another service sends a notification over the message
+        bus, this method receives it.
+
+        """
+        eventlet.spawn_n(self.dispatcher_manager.map_method,
+                         'record_metering_data',
+                         data=payload)
 
     def record_metering_data(self, context, data):
         """RPC endpoint for messages we send to ourselves.

@@ -35,7 +35,7 @@ from ceilometer.publisher import utils
 
 LOG = log.getLogger(__name__)
 
-METER_PUBLISH_OPTS = [
+METER_PUBLISH_RPC_OPTS = [
     cfg.StrOpt('metering_topic',
                default='metering',
                help='The topic that ceilometer uses for metering messages.',
@@ -43,17 +43,27 @@ METER_PUBLISH_OPTS = [
                ),
 ]
 
+METER_PUBLISH_NOTIFIER_OPTS = [
+    cfg.StrOpt('metering_topic',
+               default='metering',
+               help='The topic that ceilometer uses for metering '
+               'notifications.',
+               ),
+    cfg.StrOpt('metering_driver',
+               default='messagingv2',
+               help='The topic that ceilometer uses for metering '
+               'notifications.',
+               )
+]
 
-def register_opts(config):
-    """Register the options for publishing metering messages.
-    """
-    config.register_opts(METER_PUBLISH_OPTS, group="publisher_rpc")
+cfg.CONF.register_opts(METER_PUBLISH_RPC_OPTS,
+                       group="publisher_rpc")
+cfg.CONF.register_opts(METER_PUBLISH_NOTIFIER_OPTS,
+                       group="publisher_notifier")
+cfg.CONF.import_opt('host', 'ceilometer.service')
 
 
-register_opts(cfg.CONF)
-
-
-class RPCPublisher(publisher.PublisherBase):
+class MessagingPublisher(publisher.PublisherBase):
 
     def __init__(self, parsed_url):
         options = urlparse.parse_qs(parsed_url.query)
@@ -62,8 +72,6 @@ class RPCPublisher(publisher.PublisherBase):
         # is provided more than once
         self.per_meter_topic = bool(int(
             options.get('per_meter_topic', [0])[-1]))
-
-        self.target = options.get('target', ['record_metering_data'])[0]
 
         self.policy = options.get('policy', ['default'])[-1]
         self.max_queue_length = int(options.get(
@@ -78,10 +86,9 @@ class RPCPublisher(publisher.PublisherBase):
                      % self.policy)
             self.policy = 'default'
 
-        retry = None
+        self.retry = None
         if self.policy in ['queue', 'drop']:
-            retry = 1
-        self.rpc_client = messaging.get_rpc_client(retry=retry, version='1.0')
+            self.retry = 1
 
     def publish_samples(self, context, samples):
         """Publish samples on RPC.
@@ -141,8 +148,7 @@ class RPCPublisher(publisher.PublisherBase):
         while queue:
             context, topic, meters = queue[0]
             try:
-                self.rpc_client.prepare(topic=topic).cast(
-                    context.to_dict(), self.target, data=meters)
+                self.send(context, topic, meters)
             except oslo.messaging.MessagingDisconnected:
                 samples = sum([len(m) for __, __, m in queue])
                 if policy == 'queue':
@@ -158,3 +164,37 @@ class RPCPublisher(publisher.PublisherBase):
             else:
                 queue.pop(0)
         return []
+
+    @staticmethod
+    def send(context, topic, meters):
+        pass
+
+
+class RPCPublisher(MessagingPublisher):
+    def __init__(self, parsed_url):
+        super(RPCPublisher, self).__init__(parsed_url)
+        options = urlparse.parse_qs(parsed_url.query)
+        self.target = options.get('target', ['record_metering_data'])[0]
+        self.rpc_client = messaging.get_rpc_client(retry=self.retry,
+                                                   version='1.0')
+
+    def send(self, context, topic, meters):
+        self.rpc_client.prepare(topic=topic).cast(
+            context.to_dict(), self.target, data=meters)
+
+
+class NotifierPublisher(MessagingPublisher):
+    def __init__(self, parsed_url):
+        super(NotifierPublisher, self).__init__(parsed_url)
+        options = urlparse.parse_qs(parsed_url.query)
+        self.target = options.get('target', ['record_metering_data'])[0]
+        self.notifier = oslo.messaging.Notifier(
+            messaging.TRANSPORT,
+            driver=cfg.CONF.publisher_notifier.metering_driver,
+            publisher_id='metering.publisher.%s' % cfg.CONF.host,
+            topic=cfg.CONF.publisher_notifier.metering_topic
+        )
+
+    def send(self, context, event_type, meters):
+        self.notifier.sample(context.to_dict(), event_type=event_type,
+                             payload=meters)

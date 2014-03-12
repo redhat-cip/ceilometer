@@ -876,10 +876,25 @@
 #metering_secret=change this or be hacked
 
 
+[publisher_notifier]
+
+#
+# Options defined in ceilometer.publisher.messaging
+#
+
+# The topic that ceilometer uses for metering notifications.
+# (string value)
+#metering_topic=metering
+
+# The topic that ceilometer uses for metering notifications.
+# (string value)
+#metering_driver=messagingv2
+
+
 [publisher_rpc]
 
 #
-# Options defined in ceilometer.publisher.rpc
+# Options defined in ceilometer.publisher.messaging
 #
 
 # The topic that ceilometer uses for metering messages.
