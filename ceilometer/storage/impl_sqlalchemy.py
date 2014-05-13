@@ -33,6 +33,9 @@ from sqlalchemy import not_
 from sqlalchemy import or_
 from sqlalchemy.orm import aliased
 
+from ceilometer.alarm.storage import base as alarm_storage
+from ceilometer.collector.storage import base as collector_storage
+from ceilometer.event.storage import base as event_storage
 from ceilometer.openstack.common.db import exception as dbexc
 from ceilometer.openstack.common.db.sqlalchemy import migration
 import ceilometer.openstack.common.db.sqlalchemy.session as sqlalchemy_session
@@ -182,7 +185,9 @@ def make_query_from_filter(session, query, sample_filter, require_meter=True):
     return query
 
 
-class Connection(base.Connection):
+class Connection(alarm_storage.Connection,
+                 event_storage.Connection,
+                 collector_storage.Connection):
     """Put the data into a SQLAlchemy database.
 
     Tables::
@@ -229,7 +234,7 @@ class Connection(base.Connection):
               source_id: source id          (->source.id)
               }
     """
-    CAPABILITIES = utils.update_nested(base.Connection.CAPABILITIES,
+    CAPABILITIES = utils.update_nested(base.get_merged_capabilities(),
                                        AVAILABLE_CAPABILITIES)
 
     def __init__(self, url):
@@ -430,7 +435,7 @@ class Connection(base.Connection):
             raise NotImplementedError('Pagination not implemented')
 
         def _apply_filters(query):
-            #TODO(gordc) this should be merged with make_query_from_filter
+            # TODO(gordc) this should be merged with make_query_from_filter
             for column, value in [(models.Sample.resource_id, resource),
                                   (models.Sample.user_id, user),
                                   (models.Sample.project_id, project)]:
@@ -504,7 +509,7 @@ class Connection(base.Connection):
             raise NotImplementedError('Pagination not implemented')
 
         def _apply_filters(query):
-            #TODO(gordc) this should be merged with make_query_from_filter
+            # TODO(gordc) this should be merged with make_query_from_filter
             for column, value in [(models.Sample.resource_id, resource),
                                   (models.Sample.user_id, user),
                                   (models.Sample.project_id, project)]:

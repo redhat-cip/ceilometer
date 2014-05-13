@@ -67,7 +67,7 @@ class TestListResources(FunctionalTest,
             sample1,
             self.CONF.publisher.metering_secret,
         )
-        self.conn.record_metering_data(msg)
+        self.collector_conn.record_metering_data(msg)
 
         data = self.get_json('/resources')
         self.assertEqual(1, len(data))
@@ -96,7 +96,7 @@ class TestListResources(FunctionalTest,
             sample1,
             self.CONF.publisher.metering_secret,
         )
-        self.conn.record_metering_data(msg)
+        self.collector_conn.record_metering_data(msg)
 
         sample2 = sample.Sample(
             'instance',
@@ -116,7 +116,7 @@ class TestListResources(FunctionalTest,
             sample2,
             self.CONF.publisher.metering_secret,
         )
-        self.conn.record_metering_data(msg2)
+        self.collector_conn.record_metering_data(msg2)
 
         data = self.get_json('/resources')
         self.assertEqual(2, len(data))
@@ -149,7 +149,7 @@ class TestListResources(FunctionalTest,
                 datapoint,
                 self.CONF.publisher.metering_secret,
             )
-            self.conn.record_metering_data(msg)
+            self.collector_conn.record_metering_data(msg)
 
         data = self.get_json('/resources')
         self.assertEqual(1, len(data))
@@ -174,7 +174,7 @@ class TestListResources(FunctionalTest,
             sample1,
             self.CONF.publisher.metering_secret,
         )
-        self.conn.record_metering_data(msg)
+        self.collector_conn.record_metering_data(msg)
 
         sample2 = sample.Sample(
             'instance',
@@ -194,7 +194,7 @@ class TestListResources(FunctionalTest,
             sample2,
             self.CONF.publisher.metering_secret,
         )
-        self.conn.record_metering_data(msg2)
+        self.collector_conn.record_metering_data(msg2)
 
         data = self.get_json('/resources/resource-id')
         self.assertEqual('resource-id', data['resource_id'])
@@ -218,7 +218,7 @@ class TestListResources(FunctionalTest,
             sample1,
             self.CONF.publisher.metering_secret,
         )
-        self.conn.record_metering_data(msg)
+        self.collector_conn.record_metering_data(msg)
 
         sample2 = sample.Sample(
             'instance',
@@ -238,7 +238,7 @@ class TestListResources(FunctionalTest,
             sample2,
             self.CONF.publisher.metering_secret,
         )
-        self.conn.record_metering_data(msg2)
+        self.collector_conn.record_metering_data(msg2)
 
         data = self.get_json('/resources', q=[{'field': 'source',
                                                'value': 'test_list_resources',
@@ -267,7 +267,7 @@ class TestListResources(FunctionalTest,
             sample1,
             self.CONF.publisher.metering_secret,
         )
-        self.conn.record_metering_data(msg)
+        self.collector_conn.record_metering_data(msg)
 
         sample2 = sample.Sample(
             'instance',
@@ -287,7 +287,7 @@ class TestListResources(FunctionalTest,
             sample2,
             self.CONF.publisher.metering_secret,
         )
-        self.conn.record_metering_data(msg2)
+        self.collector_conn.record_metering_data(msg2)
 
         resp1 = self.get_json('/resources/resource-id-1')
         self.assertEqual("resource-id-1", resp1["resource_id"])
@@ -320,7 +320,7 @@ class TestListResources(FunctionalTest,
             sample1,
             self.CONF.publisher.metering_secret,
         )
-        self.conn.record_metering_data(msg)
+        self.collector_conn.record_metering_data(msg)
 
         sample2 = sample.Sample(
             'instance',
@@ -340,7 +340,7 @@ class TestListResources(FunctionalTest,
             sample2,
             self.CONF.publisher.metering_secret,
         )
-        self.conn.record_metering_data(msg2)
+        self.collector_conn.record_metering_data(msg2)
 
         data = self.get_json('/resources', q=[{'field': 'user_id',
                                                'value': 'user-id',
@@ -367,7 +367,7 @@ class TestListResources(FunctionalTest,
             sample1,
             self.CONF.publisher.metering_secret,
         )
-        self.conn.record_metering_data(msg)
+        self.collector_conn.record_metering_data(msg)
 
         sample2 = sample.Sample(
             'instance',
@@ -387,7 +387,7 @@ class TestListResources(FunctionalTest,
             sample2,
             self.CONF.publisher.metering_secret,
         )
-        self.conn.record_metering_data(msg2)
+        self.collector_conn.record_metering_data(msg2)
 
         data = self.get_json('/resources', q=[{'field': 'project_id',
                                                'value': 'project-id',
@@ -414,7 +414,7 @@ class TestListResources(FunctionalTest,
             sample1,
             self.CONF.publisher.metering_secret,
         )
-        self.conn.record_metering_data(msg2)
+        self.collector_conn.record_metering_data(msg2)
 
         data = self.get_json('/resources',
                              headers={"X-Roles": "Member",
@@ -441,7 +441,7 @@ class TestListResources(FunctionalTest,
             sample1,
             self.CONF.publisher.metering_secret,
         )
-        self.conn.record_metering_data(msg2)
+        self.collector_conn.record_metering_data(msg2)
 
         data = self.get_json('/resources',
                              headers={"X-Roles": "Member",
@@ -470,7 +470,7 @@ class TestListResources(FunctionalTest,
             sample1,
             self.CONF.publisher.metering_secret,
         )
-        self.conn.record_metering_data(msg)
+        self.collector_conn.record_metering_data(msg)
 
         data = self.get_json('/resources')
         metadata = data[0]['metadata']
@@ -499,7 +499,7 @@ class TestListResources(FunctionalTest,
             sample1,
             self.CONF.publisher.metering_secret,
         )
-        self.conn.record_metering_data(msg)
+        self.collector_conn.record_metering_data(msg)
 
         data = self.get_json('/resources')
         links = data[0]['links']
@@ -531,7 +531,7 @@ class TestListResources(FunctionalTest,
             sample1,
             self.CONF.publisher.metering_secret,
         )
-        self.conn.record_metering_data(msg)
+        self.collector_conn.record_metering_data(msg)
 
         data = self.get_json('/resources?meter_links=0')
         links = data[0]['links']

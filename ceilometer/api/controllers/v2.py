@@ -190,7 +190,7 @@ class Query(_Base):
     field = wtypes.text
     "The name of the field to test"
 
-    #op = wsme.wsattr(operation_kind, default='eq')
+    # op = wsme.wsattr(operation_kind, default='eq')
     # this ^ doesn't seem to work.
     op = wsme.wsproperty(operation_kind, get_op, set_op)
     "The comparison operator. Defaults to 'eq'."
@@ -431,9 +431,9 @@ def _validate_timestamp_fields(query, field_name, operator_list,
 
     for item in query:
         if item.field == field_name:
-            #If *timestamp* or *search_offset* field was specified in the
-            #query, but timestamp is not supported on that resource, on
-            #which the query was invoked, then raise an exception.
+            # If *timestamp* or *search_offset* field was specified in the
+            # query, but timestamp is not supported on that resource, on
+            # which the query was invoked, then raise an exception.
             if not allow_timestamps:
                 raise wsme.exc.UnknownArgument(field_name,
                                                "not valid for " +
@@ -816,11 +816,12 @@ class MeterController(rest.RestController):
         """
         if limit and limit < 0:
             raise ClientSideError(_("Limit must be positive"))
+        conn = pecan.request.storage_conns.get('collector')
         kwargs = _query_to_kwargs(q, storage.SampleFilter.__init__)
         kwargs['meter'] = self.meter_name
         f = storage.SampleFilter(**kwargs)
         return [OldSample.from_db_model(e)
-                for e in pecan.request.storage_conn.get_samples(f, limit=limit)
+                for e in conn.get_samples(f, limit=limit)
                 ]
 
     @wsme_pecan.wsexpose([OldSample], body=[OldSample])
@@ -902,12 +903,9 @@ class MeterController(rest.RestController):
         g = _validate_groupby_fields(groupby)
 
         aggregate = utils.uniq(aggregate, ['func', 'param'])
-        computed = pecan.request.storage_conn.get_meter_statistics(f,
-                                                                   period,
-                                                                   g,
-                                                                   aggregate)
-        LOG.debug(_('computed value coming from %r'),
-                  pecan.request.storage_conn)
+        conn = pecan.request.storage_conns.get('collector')
+        computed = conn.get_meter_statistics(f, period, g, aggregate)
+        LOG.debug(_('computed value coming from %r'), conn)
         # Find the original timestamp in the query to use for clamping
         # the duration returned in the statistics.
         start = end = None
@@ -982,11 +980,11 @@ class MetersController(rest.RestController):
 
         :param q: Filter rules for the meters to be returned.
         """
-        #Timestamp field is not supported for Meter queries
-        kwargs = _query_to_kwargs(q, pecan.request.storage_conn.get_meters,
-                                  allow_timestamps=False)
+        # Timestamp field is not supported for Meter queries
+        conn = pecan.request.storage_conns.get('collector')
+        kwargs = _query_to_kwargs(q, conn.get_meters, allow_timestamps=False)
         return [Meter.from_db_model(m)
-                for m in pecan.request.storage_conn.get_meters(**kwargs)]
+                for m in conn.get_meters(**kwargs)]
 
 
 class Sample(_Base):
@@ -1076,7 +1074,8 @@ class SamplesController(rest.RestController):
         kwargs = _query_to_kwargs(q, storage.SampleFilter.__init__)
         f = storage.SampleFilter(**kwargs)
         return map(Sample.from_db_model,
-                   pecan.request.storage_conn.get_samples(f, limit=limit))
+                   pecan.request.storage_conns.get(
+                       'collector').get_samples(f, limit=limit))
 
     @wsme_pecan.wsexpose(Sample, wtypes.text)
     def get_one(self, sample_id):
@@ -1086,7 +1085,8 @@ class SamplesController(rest.RestController):
         """
         f = storage.SampleFilter(message_id=sample_id)
 
-        samples = list(pecan.request.storage_conn.get_samples(f))
+        samples = list(pecan.request.storage_conns.get(
+            'collector').get_samples(f))
         if len(samples) < 1:
             raise EntityNotFound(_('Sample'), sample_id)
 
@@ -1433,8 +1433,8 @@ class ResourcesController(rest.RestController):
         links = [_make_link('self', pecan.request.host_url, 'resources',
                             resource_id)]
         if meter_links:
-            for meter in pecan.request.storage_conn.get_meters(resource=
-                                                               resource_id):
+            conn = pecan.request.storage_conns.get('collector')
+            for meter in conn.get_meters(resource=resource_id):
                 query = {'field': 'resource_id', 'value': resource_id}
                 links.append(_make_link(meter.name, pecan.request.host_url,
                                         'meters', meter.name, query=query))
@@ -1447,8 +1447,9 @@ class ResourcesController(rest.RestController):
         :param resource_id: The UUID of the resource.
         """
         authorized_project = acl.get_limited_to_project(pecan.request.headers)
-        resources = list(pecan.request.storage_conn.get_resources(
-            resource=resource_id, project=authorized_project))
+        conn = pecan.request.storage_conns.get('collector')
+        resources = list(conn.get_resources(resource=resource_id,
+                                            project=authorized_project))
         if not resources:
             raise EntityNotFound(_('Resource'), resource_id)
         return Resource.from_db_and_links(resources[0],
@@ -1461,12 +1462,13 @@ class ResourcesController(rest.RestController):
         :param q: Filter rules for the resources to be returned.
         :param meter_links: option to include related meter links
         """
-        kwargs = _query_to_kwargs(q, pecan.request.storage_conn.get_resources)
+        conn = pecan.request.storage_conns.get('collector')
+        kwargs = _query_to_kwargs(q, conn.get_resources)
         resources = [
             Resource.from_db_and_links(r,
                                        self._resource_links(r.resource_id,
                                                             meter_links))
-            for r in pecan.request.storage_conn.get_resources(**kwargs)]
+            for r in conn.get_resources(**kwargs)]
         return resources
 
 
@@ -1474,8 +1476,8 @@ class AlarmThresholdRule(_Base):
     meter_name = wsme.wsattr(wtypes.text, mandatory=True)
     "The name of the meter"
 
-    #FIXME(sileht): default doesn't work
-    #workaround: default is set in validate method
+    # FIXME(sileht): default doesn't work
+    # workaround: default is set in validate method
     query = wsme.wsattr([Query], default=[])
     """The query to find the data for computing statistics.
     Ownership settings are automatically included based on the Alarm owner.
@@ -1509,15 +1511,15 @@ class AlarmThresholdRule(_Base):
 
     @staticmethod
     def validate(threshold_rule):
-        #note(sileht): wsme default doesn't work in some case
-        #workaround for https://bugs.launchpad.net/wsme/+bug/1227039
+        # note(sileht): wsme default doesn't work in some case
+        # workaround for https://bugs.launchpad.net/wsme/+bug/1227039
         if not threshold_rule.query:
             threshold_rule.query = []
 
-        #Timestamp is not allowed for AlarmThresholdRule query, as the alarm
-        #evaluator will construct timestamp bounds for the sequence of
-        #statistics queries as the sliding evaluation window advances
-        #over time.
+        # Timestamp is not allowed for AlarmThresholdRule query, as the alarm
+        # evaluator will construct timestamp bounds for the sequence of
+        # statistics queries as the sliding evaluation window advances
+        # over time.
         _validate_query(threshold_rule.query, storage.SampleFilter.__init__,
                         allow_timestamps=False)
         return threshold_rule
@@ -1739,12 +1741,12 @@ class Alarm(_Base):
                 on_behalf_of=alarm.project_id
             )
         elif alarm.combination_rule:
+            conn = pecan.request.storage_conns.get('alarm')
             project = _get_auth_project(alarm.project_id
                                         if alarm.project_id != wtypes.Unset
                                         else None)
             for id in alarm.combination_rule.alarm_ids:
-                alarms = list(pecan.request.storage_conn.get_alarms(
-                    alarm_id=id, project=project))
+                alarms = list(conn.get_alarms(alarm_id=id, project=project))
                 if not alarms:
                     raise EntityNotFound(_('Alarm'), id)
 
@@ -1857,9 +1859,9 @@ class AlarmController(rest.RestController):
         self._id = alarm_id
 
     def _alarm(self):
-        self.conn = pecan.request.storage_conn
+        self.alarm_conn = pecan.request.storage_conns.get('alarm')
         auth_project = acl.get_limited_to_project(pecan.request.headers)
-        alarms = list(self.conn.get_alarms(alarm_id=self._id,
+        alarms = list(self.alarm_conn.get_alarms(alarm_id=self._id,
                                            project=auth_project))
         if not alarms:
             raise EntityNotFound(_('Alarm'), self._id)
@@ -1884,7 +1886,7 @@ class AlarmController(rest.RestController):
                        timestamp=now)
 
         try:
-            self.conn.record_alarm_change(payload)
+            self.alarm_conn.record_alarm_change(payload)
         except NotImplementedError:
             pass
 
@@ -1927,8 +1929,8 @@ class AlarmController(rest.RestController):
 
         # make sure alarms are unique by name per project.
         if alarm_in.name != data.name:
-            alarms = list(self.conn.get_alarms(name=data.name,
-                                               project=data.project_id))
+            alarms = list(self.alarm_conn.get_alarms(name=data.name,
+                                                     project=data.project_id))
             if alarms:
                 raise ClientSideError(
                     _("Alarm with name=%s exists") % data.name,
@@ -1949,7 +1951,7 @@ class AlarmController(rest.RestController):
             LOG.exception(_("Error while putting alarm: %s") % updated_alarm)
             raise ClientSideError(_("Alarm incorrect"))
 
-        alarm = self.conn.update_alarm(alarm_in)
+        alarm = self.alarm_conn.update_alarm(alarm_in)
 
         change = dict((k, v) for k, v in updated_alarm.items()
                       if v != old_alarm[k] and k not in
@@ -1963,7 +1965,7 @@ class AlarmController(rest.RestController):
         """
         # ensure alarm exists before deleting
         alarm = self._alarm()
-        self.conn.delete_alarm(alarm.alarm_id)
+        self.alarm_conn.delete_alarm(alarm.alarm_id)
         change = Alarm.from_db_model(alarm).as_dict(storage.models.Alarm)
         self._record_change(change,
                             timeutils.utcnow(),
@@ -1981,7 +1983,7 @@ class AlarmController(rest.RestController):
         # returned to those carried out on behalf of the auth'd tenant, to
         # avoid inappropriate cross-tenant visibility of alarm history
         auth_project = acl.get_limited_to_project(pecan.request.headers)
-        conn = pecan.request.storage_conn
+        conn = pecan.request.storage_conns.get('alarm')
         kwargs = _query_to_kwargs(q, conn.get_alarm_changes, ['on_behalf_of',
                                                               'alarm_id'])
         return [AlarmChange.from_db_model(ac)
@@ -2003,7 +2005,7 @@ class AlarmController(rest.RestController):
         alarm = self._alarm()
         alarm.state = state
         alarm.state_timestamp = now
-        alarm = self.conn.update_alarm(alarm)
+        alarm = self.alarm_conn.update_alarm(alarm)
         change = {'state': alarm.state}
         self._record_change(change, now, on_behalf_of=alarm.project_id,
                             type=storage.models.AlarmChange.STATE_TRANSITION)
@@ -2057,7 +2059,7 @@ class AlarmsController(rest.RestController):
 
         :param data: an alarm within the request body.
         """
-        conn = pecan.request.storage_conn
+        conn = pecan.request.storage_conns.get('alarm')
         now = timeutils.utcnow()
 
         data.alarm_id = str(uuid.uuid4())
@@ -2108,12 +2110,11 @@ class AlarmsController(rest.RestController):
 
         :param q: Filter rules for the alarms to be returned.
         """
-        #Timestamp is not supported field for Simple Alarm queries
-        kwargs = _query_to_kwargs(q,
-                                  pecan.request.storage_conn.get_alarms,
-                                  allow_timestamps=False)
+        # Timestamp is not supported field for Simple Alarm queries
+        conn = pecan.request.storage_conns.get('alarm')
+        kwargs = _query_to_kwargs(q, conn.get_alarms, allow_timestamps=False)
         return [Alarm.from_db_model(m)
-                for m in pecan.request.storage_conn.get_alarms(**kwargs)]
+                for m in conn.get_alarms(**kwargs)]
 
 
 class TraitDescription(_Base):
@@ -2268,9 +2269,9 @@ class TraitsController(rest.RestController):
         :param trait_name: Trait to return values for
         """
         LOG.debug(_("Getting traits for %s") % event_type)
+        conn = pecan.request.storage_conns.get('event')
         return [Trait(name=t.name, type=t.get_type_name(), value=t.value)
-                for t in pecan.request.storage_conn
-                .get_traits(event_type, trait_name)]
+                for t in conn.get_traits(event_type, trait_name)]
 
     @requires_admin
     @wsme_pecan.wsexpose([TraitDescription], wtypes.text)
@@ -2279,11 +2280,11 @@ class TraitsController(rest.RestController):
 
         :param event_type: Event type to filter traits by
         """
+        conn = pecan.request.storage_conns.get('event')
         get_trait_name = storage.models.Trait.get_name_by_type
         return [TraitDescription(name=t['name'],
                                  type=get_trait_name(t['data_type']))
-                for t in pecan.request.storage_conn
-                .get_trait_types(event_type)]
+                for t in conn.get_trait_types(event_type)]
 
 
 class EventTypesController(rest.RestController):
@@ -2300,7 +2301,8 @@ class EventTypesController(rest.RestController):
     def get_all(self):
         """Get all event types.
         """
-        return list(pecan.request.storage_conn.get_event_types())
+        conn = pecan.request.storage_conns.get('event')
+        return list(conn.get_event_types())
 
 
 class EventsController(rest.RestController):
@@ -2313,13 +2315,13 @@ class EventsController(rest.RestController):
 
         :param q: Filter arguments for which Events to return
         """
+        conn = pecan.request.storage_conns.get('event')
         event_filter = _event_query_to_event_filter(q)
         return [Event(message_id=event.message_id,
                       event_type=event.event_type,
                       generated=event.generated,
                       traits=event.traits)
-                for event in
-                pecan.request.storage_conn.get_events(event_filter)]
+                for event in conn.get_events(event_filter)]
 
     @requires_admin
     @wsme_pecan.wsexpose(Event, wtypes.text)
@@ -2328,8 +2330,9 @@ class EventsController(rest.RestController):
 
         :param message_id: Message ID of the Event to be returned
         """
+        conn = pecan.request.storage_conns.get('event')
         event_filter = storage.EventFilter(message_id=message_id)
-        events = pecan.request.storage_conn.get_events(event_filter)
+        events = conn.get_events(event_filter)
         if not events:
             raise EntityNotFound(_("Event"), message_id)
 
@@ -2366,7 +2369,7 @@ class QuerySamplesController(rest.RestController):
                                       sample_name_mapping,
                                       metadata_allowed=True)
         query.validate(visibility_field="project_id")
-        conn = pecan.request.storage_conn
+        conn = pecan.request.storage_conns.get('collector')
         return [Sample.from_db_model(s)
                 for s in conn.query_samples(query.filter_expr,
                                             query.orderby,
@@ -2385,7 +2388,7 @@ class QueryAlarmHistoryController(rest.RestController):
         query = ValidatedComplexQuery(body,
                                       storage.models.AlarmChange)
         query.validate(visibility_field="on_behalf_of")
-        conn = pecan.request.storage_conn
+        conn = pecan.request.storage_conns.get('alarm')
         return [AlarmChange.from_db_model(s)
                 for s in conn.query_alarm_history(query.filter_expr,
                                                   query.orderby,
@@ -2406,7 +2409,7 @@ class QueryAlarmsController(rest.RestController):
         query = ValidatedComplexQuery(body,
                                       storage.models.Alarm)
         query.validate(visibility_field="project_id")
-        conn = pecan.request.storage_conn
+        conn = pecan.request.storage_conns.get('alarm')
         return [Alarm.from_db_model(s)
                 for s in conn.query_alarms(query.filter_expr,
                                            query.orderby,
@@ -2483,7 +2486,11 @@ class CapabilitiesController(rest.RestController):
         """
         # variation in API capabilities is effectively determined by
         # the lack of strict feature parity across storage drivers
-        driver_capabilities = pecan.request.storage_conn.get_capabilities()
+        # FIXME(sileht): for now all storage_conn return the same capabilities
+        # but in near future that will be wrong, we need to compute it here.
+        driver_capabilities = {}
+        for name, conn in pecan.request.storage_conns.items():
+            driver_capabilities.update(conn.get_capabilities())
         return Capabilities(api=_flatten_capabilities(driver_capabilities))
 
 

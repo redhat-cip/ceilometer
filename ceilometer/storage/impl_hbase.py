@@ -30,6 +30,9 @@ import six.moves.urllib.parse as urlparse
 import bson.json_util
 import happybase
 
+from ceilometer.alarm.storage import base as alarm_storage
+from ceilometer.collector.storage import base as collector_storage
+from ceilometer.event.storage import base as event_storage
 from ceilometer.openstack.common.gettextutils import _
 from ceilometer.openstack.common import log
 from ceilometer.openstack.common import network_utils
@@ -55,7 +58,9 @@ AVAILABLE_CAPABILITIES = {
 }
 
 
-class Connection(base.Connection):
+class Connection(alarm_storage.Connection,
+                 event_storage.Connection,
+                 collector_storage.Connection):
     """Put the data into a HBase database
 
     Collections:
@@ -121,7 +126,7 @@ class Connection(base.Connection):
              if not determined
     """
 
-    CAPABILITIES = utils.update_nested(base.Connection.CAPABILITIES,
+    CAPABILITIES = utils.update_nested(base.get_merged_capabilities(),
                                        AVAILABLE_CAPABILITIES)
     _memory_instance = None
 
@@ -308,7 +313,7 @@ class Connection(base.Connection):
             new_meter = _format_meter_reference(
                 data['counter_name'], data['counter_type'],
                 data['counter_unit'], data['source'])
-            #TODO(nprivalova): try not to store resource_id
+            # TODO(nprivalova): try not to store resource_id
             resource = serialize_entry(**{
                 'source': data['source'], 'meter': new_meter,
                 'resource_metadata': resource_metadata,
@@ -316,7 +321,7 @@ class Connection(base.Connection):
                 'project_id': data['project_id'], 'user_id': data['user_id']})
             resource_table.put(data['resource_id'], resource)
 
-            #TODO(nprivalova): improve uniqueness
+            # TODO(nprivalova): improve uniqueness
             # Rowkey consists of reversed timestamp, meter and an md5 of
             # user+resource+project for purposes of uniqueness
             m = hashlib.md5()
@@ -784,7 +789,7 @@ def get_start_end_rts(start, start_op, end, end_op):
     rts_start = str(reverse_timestamp(start) + 1) if start else ""
     rts_end = str(reverse_timestamp(end) + 1) if end else ""
 
-    #By default, we are using ge for lower bound and lt for upper bound
+    # By default, we are using ge for lower bound and lt for upper bound
     if start_op == 'gt':
         rts_start = str(long(rts_start) - 2)
     if end_op == 'le':

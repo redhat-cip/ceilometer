@@ -93,7 +93,7 @@ class TestQueryMetersController(tests_api.FunctionalTest,
             msg = utils.meter_message_from_counter(
                 cnt,
                 self.CONF.publisher.metering_secret)
-            self.conn.record_metering_data(msg)
+            self.collector_conn.record_metering_data(msg)
 
     def test_query_fields_are_optional(self):
         data = self.post_json(self.url, params={})
@@ -327,7 +327,7 @@ class TestQueryAlarmsController(tests_api.FunctionalTest,
                                                            'op': 'eq',
                                                            'value':
                                                            project_id}]))
-                    self.conn.update_alarm(alarm)
+                    self.alarm_conn.update_alarm(alarm)
 
     def test_query_all(self):
         data = self.post_json(self.alarm_url,
@@ -474,7 +474,7 @@ class TestQueryAlarmsHistoryController(
                                     "on_behalf_of": "project-id%d" % id,
                                     "timestamp": date}
 
-                    self.conn.record_alarm_change(alarm_change)
+                    self.alarm_conn.record_alarm_change(alarm_change)
 
     def test_query_all(self):
         data = self.post_json(self.url,

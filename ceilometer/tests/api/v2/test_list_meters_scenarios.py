@@ -172,7 +172,7 @@ class TestListMeters(FunctionalTest,
                 cnt,
                 self.CONF.publisher.metering_secret)
             self.messages.append(msg)
-            self.conn.record_metering_data(msg)
+            self.collector_conn.record_metering_data(msg)
 
     def test_list_meters(self):
         data = self.get_json('/meters')

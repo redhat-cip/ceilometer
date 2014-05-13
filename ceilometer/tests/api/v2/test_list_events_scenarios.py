@@ -63,7 +63,7 @@ class TestListEvents(FunctionalTest,
             self.sample1,
             self.CONF.publisher.metering_secret,
         )
-        self.conn.record_metering_data(msg)
+        self.collector_conn.record_metering_data(msg)
 
         self.sample2 = sample.Sample(
             'instance',
@@ -83,7 +83,7 @@ class TestListEvents(FunctionalTest,
             self.sample2,
             self.CONF.publisher.metering_secret,
         )
-        self.conn.record_metering_data(msg2)
+        self.collector_conn.record_metering_data(msg2)
 
     def test_all(self):
         data = self.get_json('/meters/instance')

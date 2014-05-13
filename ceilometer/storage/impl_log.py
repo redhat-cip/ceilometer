@@ -18,14 +18,18 @@
 """Simple logging storage backend.
 """
 
+from ceilometer.alarm.storage import base as alarm_storage
+from ceilometer.collector.storage import base as collector_storage
+from ceilometer.event.storage import base as event_storage
 from ceilometer.openstack.common.gettextutils import _
 from ceilometer.openstack.common import log
-from ceilometer.storage import base
 
 LOG = log.getLogger(__name__)
 
 
-class Connection(base.Connection):
+class Connection(alarm_storage.Connection,
+                 event_storage.Connection,
+                 collector_storage.Connection):
     """Log the data.
     """
 

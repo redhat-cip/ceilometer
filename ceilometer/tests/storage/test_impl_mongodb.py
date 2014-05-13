@@ -38,7 +38,7 @@ class MongoDBEngineTestBase(tests_db.TestBase):
 class MongoDBConnection(MongoDBEngineTestBase):
     def test_connection_pooling(self):
         test_conn = impl_mongodb.Connection(self.db_manager.connection)
-        self.assertEqual(self.conn.conn, test_conn.conn)
+        self.assertEqual(self.collector_conn.conn, test_conn.conn)
 
     def test_replica_set(self):
         url = self.db_manager.connection + '?replicaSet=foobar'
@@ -58,19 +58,19 @@ class MongoDBConnection(MongoDBEngineTestBase):
 
 class MongoDBTestMarkerBase(test_storage_scenarios.DBTestBase,
                             MongoDBEngineTestBase):
-    #NOTE(Fengqian): All these three test case are the same for resource
-    #and meter collection. As to alarm, we will set up in AlarmTestPagination.
+    # NOTE(Fengqian): All these three test case are the same for resource
+    # and meter collection. As to alarm, we will set up in AlarmTestPagination.
     def test_get_marker(self):
         marker_pairs = {'user_id': 'user-id-4'}
-        ret = impl_mongodb.Connection._get_marker(self.conn.db.resource,
-                                                  marker_pairs)
+        ret = impl_mongodb.Connection._get_marker(
+            self.collector_conn.db.resource, marker_pairs)
         self.assertEqual('project-id-4', ret['project_id'])
 
     def test_get_marker_None(self):
         marker_pairs = {'user_id': 'user-id-foo'}
         try:
-            ret = impl_mongodb.Connection._get_marker(self.conn.db.resource,
-                                                      marker_pairs)
+            ret = impl_mongodb.Connection._get_marker(
+                self.collector_conn.db.resource, marker_pairs)
             self.assertEqual('project-id-foo', ret['project_id'])
         except base.NoResultFound:
             self.assertTrue(True)
@@ -78,8 +78,8 @@ class MongoDBTestMarkerBase(test_storage_scenarios.DBTestBase,
     def test_get_marker_multiple(self):
         try:
             marker_pairs = {'project_id': 'project-id'}
-            ret = impl_mongodb.Connection._get_marker(self.conn.db.resource,
-                                                      marker_pairs)
+            ret = impl_mongodb.Connection._get_marker(
+                self.collector_conn.db.resource, marker_pairs)
             self.assertEqual('project-id-foo', ret['project_id'])
         except base.MultipleResultsFound:
             self.assertTrue(True)
@@ -88,29 +88,29 @@ class MongoDBTestMarkerBase(test_storage_scenarios.DBTestBase,
 class IndexTest(MongoDBEngineTestBase):
     def test_meter_ttl_index_absent(self):
         # create a fake index and check it is deleted
-        self.conn.db.meter.ensure_index('foo', name='meter_ttl')
+        self.collector_conn.db.meter.ensure_index('foo', name='meter_ttl')
         self.CONF.set_override('time_to_live', -1, group='database')
-        self.conn.upgrade()
-        self.assertTrue(self.conn.db.meter.ensure_index('foo',
-                                                        name='meter_ttl'))
+        self.collector_conn.upgrade()
+        self.assertTrue(self.collector_conn.db.meter.ensure_index(
+            'foo', name='meter_ttl'))
         self.CONF.set_override('time_to_live', 456789, group='database')
-        self.conn.upgrade()
-        self.assertFalse(self.conn.db.meter.ensure_index('foo',
-                                                         name='meter_ttl'))
+        self.collector_conn.upgrade()
+        self.assertFalse(self.collector_conn.db.meter.ensure_index(
+            'foo', name='meter_ttl'))
 
     def test_meter_ttl_index_present(self):
         self.CONF.set_override('time_to_live', 456789, group='database')
-        self.conn.upgrade()
-        self.assertFalse(self.conn.db.meter.ensure_index('foo',
-                                                         name='meter_ttl'))
+        self.collector_conn.upgrade()
+        self.assertFalse(self.collector_conn.db.meter.ensure_index(
+            'foo', name='meter_ttl'))
         self.assertEqual(456789,
-                         self.conn.db.meter.index_information()
+                         self.collector_conn.db.meter.index_information()
                          ['meter_ttl']['expireAfterSeconds'])
 
         self.CONF.set_override('time_to_live', -1, group='database')
-        self.conn.upgrade()
-        self.assertTrue(self.conn.db.meter.ensure_index('foo',
-                                                        name='meter_ttl'))
+        self.collector_conn.upgrade()
+        self.assertTrue(self.collector_conn.db.meter.ensure_index(
+            'foo', name='meter_ttl'))
 
 
 class AlarmTestPagination(test_storage_scenarios.AlarmTestBase,
@@ -118,7 +118,7 @@ class AlarmTestPagination(test_storage_scenarios.AlarmTestBase,
     def test_alarm_get_marker(self):
         self.add_some_alarms()
         marker_pairs = {'name': 'red-alert'}
-        ret = impl_mongodb.Connection._get_marker(self.conn.db.alarm,
+        ret = impl_mongodb.Connection._get_marker(self.alarm_conn.db.alarm,
                                                   marker_pairs=marker_pairs)
         self.assertEqual('test.one', ret['rule']['meter_name'])
 
@@ -126,7 +126,7 @@ class AlarmTestPagination(test_storage_scenarios.AlarmTestBase,
         self.add_some_alarms()
         try:
             marker_pairs = {'name': 'user-id-foo'}
-            ret = impl_mongodb.Connection._get_marker(self.conn.db.alarm,
+            ret = impl_mongodb.Connection._get_marker(self.alarm_conn.db.alarm,
                                                       marker_pairs)
             self.assertEqual('meter_name-foo', ret['rule']['meter_name'])
         except base.NoResultFound:
@@ -136,7 +136,7 @@ class AlarmTestPagination(test_storage_scenarios.AlarmTestBase,
         self.add_some_alarms()
         try:
             marker_pairs = {'user_id': 'me'}
-            ret = impl_mongodb.Connection._get_marker(self.conn.db.alarm,
+            ret = impl_mongodb.Connection._get_marker(self.alarm_conn.db.alarm,
                                                       marker_pairs)
             self.assertEqual('counter-name-foo', ret['rule']['meter_name'])
         except base.MultipleResultsFound:

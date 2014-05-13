@@ -152,7 +152,7 @@ class TestAlarms(FunctionalTest,
                          rule=dict(alarm_ids=['a', 'b'],
                                    operator='or')
                          )]:
-            self.conn.update_alarm(alarm)
+            self.alarm_conn.update_alarm(alarm)
 
     @staticmethod
     def _add_default_threshold_rule(alarm):
@@ -237,7 +237,7 @@ class TestAlarms(FunctionalTest,
                              project_id=self.auth_headers['X-Project-Id'],
                              time_constraints=[],
                              rule=dict(alarm_ids=['a', 'b'], operator='or'))
-        self.conn.update_alarm(alarm)
+        self.alarm_conn.update_alarm(alarm)
 
         alarms = self.get_json('/alarms',
                                q=[{'field': 'enabled',
@@ -309,7 +309,7 @@ class TestAlarms(FunctionalTest,
                              " Value: \'None\'. Mandatory field missing."
                              % field.split('/', 1)[-1],
                              resp.json['error_message']['faultstring'])
-        alarms = list(self.conn.get_alarms())
+        alarms = list(self.alarm_conn.get_alarms())
         self.assertEqual(4, len(alarms))
 
     def test_post_invalid_alarm_time_constraint_start(self):
@@ -330,7 +330,7 @@ class TestAlarms(FunctionalTest,
         }
         self.post_json('/alarms', params=json, expect_errors=True, status=400,
                        headers=self.auth_headers)
-        alarms = list(self.conn.get_alarms())
+        alarms = list(self.alarm_conn.get_alarms())
         self.assertEqual(4, len(alarms))
 
     def test_post_duplicate_time_constraint_name(self):
@@ -359,7 +359,7 @@ class TestAlarms(FunctionalTest,
         self.assertEqual(
             "Time constraint names must be unique for a given alarm.",
             resp.json['error_message']['faultstring'])
-        alarms = list(self.conn.get_alarms())
+        alarms = list(self.alarm_conn.get_alarms())
         self.assertEqual(4, len(alarms))
 
     def test_post_invalid_alarm_time_constraint_duration(self):
@@ -380,7 +380,7 @@ class TestAlarms(FunctionalTest,
         }
         self.post_json('/alarms', params=json, expect_errors=True, status=400,
                        headers=self.auth_headers)
-        alarms = list(self.conn.get_alarms())
+        alarms = list(self.alarm_conn.get_alarms())
         self.assertEqual(4, len(alarms))
 
     def test_post_invalid_alarm_time_constraint_timezone(self):
@@ -402,7 +402,7 @@ class TestAlarms(FunctionalTest,
         }
         self.post_json('/alarms', params=json, expect_errors=True, status=400,
                        headers=self.auth_headers)
-        alarms = list(self.conn.get_alarms())
+        alarms = list(self.alarm_conn.get_alarms())
         self.assertEqual(4, len(alarms))
 
     def test_post_invalid_alarm_period(self):
@@ -420,7 +420,7 @@ class TestAlarms(FunctionalTest,
         }
         self.post_json('/alarms', params=json, expect_errors=True, status=400,
                        headers=self.auth_headers)
-        alarms = list(self.conn.get_alarms())
+        alarms = list(self.alarm_conn.get_alarms())
         self.assertEqual(4, len(alarms))
 
     def test_post_null_threshold_rule(self):
@@ -449,7 +449,7 @@ class TestAlarms(FunctionalTest,
         }
         self.post_json('/alarms', params=json, expect_errors=True, status=400,
                        headers=self.auth_headers)
-        alarms = list(self.conn.get_alarms())
+        alarms = list(self.alarm_conn.get_alarms())
         self.assertEqual(4, len(alarms))
 
     def test_post_invalid_alarm_query(self):
@@ -468,7 +468,7 @@ class TestAlarms(FunctionalTest,
         }
         self.post_json('/alarms', params=json, expect_errors=True, status=400,
                        headers=self.auth_headers)
-        alarms = list(self.conn.get_alarms())
+        alarms = list(self.alarm_conn.get_alarms())
         self.assertEqual(4, len(alarms))
 
     def test_post_invalid_alarm_query_field_type(self):
@@ -492,7 +492,7 @@ class TestAlarms(FunctionalTest,
         resp_string = jsonutils.loads(resp.body)
         fault_string = resp_string['error_message']['faultstring']
         self.assertTrue(fault_string.startswith(expected_error_message))
-        alarms = list(self.conn.get_alarms())
+        alarms = list(self.alarm_conn.get_alarms())
         self.assertEqual(4, len(alarms))
 
     def test_post_invalid_alarm_have_multiple_rules(self):
@@ -513,7 +513,7 @@ class TestAlarms(FunctionalTest,
         }
         resp = self.post_json('/alarms', params=json, expect_errors=True,
                               status=400, headers=self.auth_headers)
-        alarms = list(self.conn.get_alarms())
+        alarms = list(self.alarm_conn.get_alarms())
         self.assertEqual(4, len(alarms))
         self.assertEqual('threshold_rule and combination_rule cannot '
                          'be set at the same time',
@@ -537,7 +537,7 @@ class TestAlarms(FunctionalTest,
         }
         resp = self.post_json('/alarms', params=json, expect_errors=True,
                               status=400, headers=self.auth_headers)
-        alarms = list(self.conn.get_alarms())
+        alarms = list(self.alarm_conn.get_alarms())
         self.assertEqual(4, len(alarms))
         self.assertEqual(
             'Unknown argument: "timestamp": '
@@ -581,7 +581,7 @@ class TestAlarms(FunctionalTest,
         }
         self.post_json('/alarms', params=json, status=201,
                        headers=self.auth_headers)
-        alarms = list(self.conn.get_alarms())
+        alarms = list(self.alarm_conn.get_alarms())
         self.assertEqual(5, len(alarms))
         for alarm in alarms:
             if alarm.name == 'added_alarm_defaults':
@@ -653,7 +653,7 @@ class TestAlarms(FunctionalTest,
 
         self.post_json('/alarms', params=json, status=201,
                        headers=self.auth_headers)
-        alarms = list(self.conn.get_alarms(enabled=False))
+        alarms = list(self.alarm_conn.get_alarms(enabled=False))
         self.assertEqual(1, len(alarms))
         json['threshold_rule']['query'].append({
             'field': 'project_id', 'op': 'eq',
@@ -697,7 +697,7 @@ class TestAlarms(FunctionalTest,
             }
         }
         self.post_json('/alarms', params=json, status=201)
-        alarms = list(self.conn.get_alarms(enabled=False))
+        alarms = list(self.alarm_conn.get_alarms(enabled=False))
         self.assertEqual(1, len(alarms))
         # to check to BoundedInt type conversion
         json['threshold_rule']['evaluation_periods'] = 3
@@ -744,7 +744,7 @@ class TestAlarms(FunctionalTest,
         headers['X-Roles'] = 'admin'
         self.post_json('/alarms', params=json, status=201,
                        headers=headers)
-        alarms = list(self.conn.get_alarms(enabled=False))
+        alarms = list(self.alarm_conn.get_alarms(enabled=False))
         self.assertEqual(1, len(alarms))
         self.assertEqual('auseridthatisnotmine', alarms[0].user_id)
         self.assertEqual('aprojectidthatisnotmine', alarms[0].project_id)
@@ -812,7 +812,7 @@ class TestAlarms(FunctionalTest,
         headers['X-Roles'] = 'admin'
         self.post_json('/alarms', params=json, status=201,
                        headers=headers)
-        alarms = list(self.conn.get_alarms(enabled=False))
+        alarms = list(self.alarm_conn.get_alarms(enabled=False))
         self.assertEqual(1, len(alarms))
         self.assertEqual(self.auth_headers['X-User-Id'], alarms[0].user_id)
         self.assertEqual('aprojectidthatisnotmine', alarms[0].project_id)
@@ -848,7 +848,7 @@ class TestAlarms(FunctionalTest,
         headers['X-Roles'] = 'admin'
         self.post_json('/alarms', params=json, status=201,
                        headers=headers)
-        alarms = list(self.conn.get_alarms(enabled=False))
+        alarms = list(self.alarm_conn.get_alarms(enabled=False))
         self.assertEqual(1, len(alarms))
         self.assertEqual('auseridthatisnotmine', alarms[0].user_id)
         self.assertEqual(self.auth_headers['X-Project-Id'],
@@ -919,7 +919,7 @@ class TestAlarms(FunctionalTest,
         headers.update(self.auth_headers)
         headers['X-Roles'] = 'demo'
         self.post_json('/alarms', params=json, status=201, headers=headers)
-        alarms = list(self.conn.get_alarms(enabled=False))
+        alarms = list(self.alarm_conn.get_alarms(enabled=False))
         self.assertEqual(1, len(alarms))
         self.assertEqual(alarms[0].user_id,
                          self.auth_headers['X-User-Id'])
@@ -957,7 +957,7 @@ class TestAlarms(FunctionalTest,
         }
         self.post_json('/alarms', params=json, status=201,
                        headers=self.auth_headers)
-        alarms = list(self.conn.get_alarms(enabled=False))
+        alarms = list(self.alarm_conn.get_alarms(enabled=False))
         self.assertEqual(1, len(alarms))
         if alarms[0].name == 'added_alarm':
             for key in json:
@@ -1048,7 +1048,7 @@ class TestAlarms(FunctionalTest,
         }
         self.post_json('/alarms', params=json, status=201,
                        headers=self.auth_headers)
-        alarms = list(self.conn.get_alarms(enabled=False))
+        alarms = list(self.alarm_conn.get_alarms(enabled=False))
         self.assertEqual(1, len(alarms))
         self.assertEqual(u'Combined state of alarms a and b',
                          alarms[0].description)
@@ -1144,7 +1144,7 @@ class TestAlarms(FunctionalTest,
 
         self.post_json('/alarms', params=json, status=201,
                        headers=an_other_admin_auth)
-        alarms = list(self.conn.get_alarms(enabled=False))
+        alarms = list(self.alarm_conn.get_alarms(enabled=False))
         if alarms[0].name == 'added_alarm':
             for key in json:
                 if key.endswith('_rule'):
@@ -1175,7 +1175,7 @@ class TestAlarms(FunctionalTest,
         }
         self.post_json('/alarms', params=json, status=404,
                        headers=self.auth_headers)
-        alarms = list(self.conn.get_alarms(enabled=False))
+        alarms = list(self.alarm_conn.get_alarms(enabled=False))
         self.assertEqual(0, len(alarms))
 
     def test_post_alarm_combination_duplicate_alarm_ids(self):
@@ -1189,7 +1189,7 @@ class TestAlarms(FunctionalTest,
         }
         self.post_json('/alarms', params=json_body, status=201,
                        headers=self.auth_headers)
-        alarms = list(self.conn.get_alarms(name='dup_alarm_id'))
+        alarms = list(self.alarm_conn.get_alarms(name='dup_alarm_id'))
         self.assertEqual(1, len(alarms))
         self.assertEqual(['a', 'd', 'c', 'b'],
                          alarms[0].rule.get('alarm_ids'))
@@ -1255,7 +1255,8 @@ class TestAlarms(FunctionalTest,
         self.put_json('/alarms/%s' % alarm_id,
                       params=json,
                       headers=self.auth_headers)
-        alarm = list(self.conn.get_alarms(alarm_id=alarm_id, enabled=False))[0]
+        alarm = list(self.alarm_conn.get_alarms(alarm_id=alarm_id,
+                                                enabled=False))[0]
         json['threshold_rule']['query'].append({
             'field': 'project_id', 'op': 'eq',
             'value': self.auth_headers['X-Project-Id']})
@@ -1303,7 +1304,8 @@ class TestAlarms(FunctionalTest,
         self.put_json('/alarms/%s' % alarm_id,
                       params=json,
                       headers=headers)
-        alarm = list(self.conn.get_alarms(alarm_id=alarm_id, enabled=False))[0]
+        alarm = list(self.alarm_conn.get_alarms(alarm_id=alarm_id,
+                                                enabled=False))[0]
         self.assertEqual('myuserid', alarm.user_id)
         self.assertEqual('myprojectid', alarm.project_id)
         self._verify_alarm(json, alarm)
@@ -1465,7 +1467,7 @@ class TestAlarms(FunctionalTest,
                       params=json_body, status=200,
                       headers=self.auth_headers)
 
-        alarms = list(self.conn.get_alarms(alarm_id=alarm_id))
+        alarms = list(self.alarm_conn.get_alarms(alarm_id=alarm_id))
         self.assertEqual(1, len(alarms))
         self.assertEqual(['c', 'a', 'b'], alarms[0].rule.get('alarm_ids'))
 
@@ -1477,7 +1479,7 @@ class TestAlarms(FunctionalTest,
                            headers=self.auth_headers,
                            status=204)
         self.assertEqual('', resp.body)
-        alarms = list(self.conn.get_alarms())
+        alarms = list(self.alarm_conn.get_alarms())
         self.assertEqual(3, len(alarms))
 
     def test_get_state_alarm(self):
@@ -1495,7 +1497,7 @@ class TestAlarms(FunctionalTest,
         resp = self.put_json('/alarms/%s/state' % data[0]['alarm_id'],
                              headers=self.auth_headers,
                              params='alarm')
-        alarms = list(self.conn.get_alarms(alarm_id=data[0]['alarm_id']))
+        alarms = list(self.alarm_conn.get_alarms(alarm_id=data[0]['alarm_id']))
         self.assertEqual(1, len(alarms))
         self.assertEqual('alarm', alarms[0].state)
         self.assertEqual('alarm', resp.json)

@@ -78,7 +78,8 @@ class TestComputeDurationByResource(FunctionalTest,
                     groupby=None,
                 )
             ]
-        return mock.patch.object(type(self.conn), 'get_meter_statistics',
+        return mock.patch.object(type(self.collector_conn),
+                                 'get_meter_statistics',
                                  side_effect=get_interval)
 
     def _invoke_api(self):
@@ -154,7 +155,8 @@ class TestComputeDurationByResource(FunctionalTest,
                 groupby=None,
             )
         ]
-        with mock.patch.object(type(self.conn), 'get_meter_statistics',
+        with mock.patch.object(type(self.collector_conn),
+                               'get_meter_statistics',
                                return_value=statistics):
             data = self.get_json('/meters/instance:m1.tiny/statistics',
                                  q=[{'field': 'timestamp',
@@ -186,7 +188,8 @@ class TestComputeDurationByResource(FunctionalTest,
             )
         ]
 
-        with mock.patch.object(type(self.conn), 'get_meter_statistics',
+        with mock.patch.object(type(self.collector_conn),
+                               'get_meter_statistics',
                                return_value=statistics):
             data = self.get_json('/meters/instance:m1.tiny/statistics',
                                  q=[{'field': 'timestamp',

@@ -54,7 +54,7 @@ class DBTestBase(tests_db.TestBase):
         msg = utils.meter_message_from_counter(
             s, self.CONF.publisher.metering_secret
         )
-        self.conn.record_metering_data(msg)
+        self.collector_conn.record_metering_data(msg)
         return msg
 
     def setUp(self):
@@ -125,14 +125,14 @@ class UserTest(DBTestBase,
                tests_db.MixinTestsWithBackendScenarios):
 
     def test_get_users(self):
-        users = self.conn.get_users()
+        users = self.collector_conn.get_users()
         expected = set(['user-id', 'user-id-alternate', 'user-id-2',
                         'user-id-3', 'user-id-4', 'user-id-5', 'user-id-6',
                         'user-id-7', 'user-id-8'])
         self.assertEqual(set(users), expected)
 
     def test_get_users_by_source(self):
-        users = self.conn.get_users(source='test-1')
+        users = self.collector_conn.get_users(source='test-1')
         self.assertEqual(list(users), ['user-id'])
 
 
@@ -140,14 +140,14 @@ class ProjectTest(DBTestBase,
                   tests_db.MixinTestsWithBackendScenarios):
 
     def test_get_projects(self):
-        projects = self.conn.get_projects()
+        projects = self.collector_conn.get_projects()
         expected = set(['project-id', 'project-id-2', 'project-id-3',
                         'project-id-4', 'project-id-5', 'project-id-6',
                         'project-id-7', 'project-id-8'])
         self.assertEqual(set(projects), expected)
 
     def test_get_projects_by_source(self):
-        projects = self.conn.get_projects(source='test-1')
+        projects = self.collector_conn.get_projects(source='test-1')
         expected = ['project-id']
         self.assertEqual(list(projects), expected)
 
@@ -159,7 +159,7 @@ class ResourceTest(DBTestBase,
         expected_first_sample_timestamp = datetime.datetime(2012, 7, 2, 10, 39)
         expected_last_sample_timestamp = datetime.datetime(2012, 7, 2, 10, 40)
         msgs_sources = [msg['source'] for msg in self.msgs]
-        resources = list(self.conn.get_resources())
+        resources = list(self.collector_conn.get_resources())
         self.assertEqual(len(resources), 9)
         for resource in resources:
             if resource.resource_id != 'resource-id':
@@ -182,17 +182,18 @@ class ResourceTest(DBTestBase,
         expected = set(['resource-id-2', 'resource-id-3', 'resource-id-4',
                         'resource-id-6', 'resource-id-8'])
 
-        resources = list(self.conn.get_resources(start_timestamp=timestamp))
+        resources = list(self.collector_conn.get_resources(
+            start_timestamp=timestamp))
         resource_ids = [r.resource_id for r in resources]
         self.assertEqual(set(resource_ids), expected)
 
-        resources = list(self.conn.get_resources(start_timestamp=timestamp,
-                                                 start_timestamp_op='ge'))
+        resources = list(self.collector_conn.get_resources(
+            start_timestamp=timestamp, start_timestamp_op='ge'))
         resource_ids = [r.resource_id for r in resources]
         self.assertEqual(set(resource_ids), expected)
 
-        resources = list(self.conn.get_resources(start_timestamp=timestamp,
-                                                 start_timestamp_op='gt'))
+        resources = list(self.collector_conn.get_resources(
+            start_timestamp=timestamp, start_timestamp_op='gt'))
         resource_ids = [r.resource_id for r in resources]
         expected.remove('resource-id-2')
         self.assertEqual(set(resource_ids), expected)
@@ -202,17 +203,18 @@ class ResourceTest(DBTestBase,
         expected = set(['resource-id', 'resource-id-alternate',
                         'resource-id-5', 'resource-id-7'])
 
-        resources = list(self.conn.get_resources(end_timestamp=timestamp))
+        resources = list(self.collector_conn.get_resources(
+            end_timestamp=timestamp))
         resource_ids = [r.resource_id for r in resources]
         self.assertEqual(set(resource_ids), expected)
 
-        resources = list(self.conn.get_resources(end_timestamp=timestamp,
-                                                 end_timestamp_op='lt'))
+        resources = list(self.collector_conn.get_resources(
+            end_timestamp=timestamp, end_timestamp_op='lt'))
         resource_ids = [r.resource_id for r in resources]
         self.assertEqual(set(resource_ids), expected)
 
-        resources = list(self.conn.get_resources(end_timestamp=timestamp,
-                                                 end_timestamp_op='le'))
+        resources = list(self.collector_conn.get_resources(
+            end_timestamp=timestamp, end_timestamp_op='le'))
         resource_ids = [r.resource_id for r in resources]
         expected.add('resource-id-2')
         self.assertEqual(set(resource_ids), expected)
@@ -221,48 +223,44 @@ class ResourceTest(DBTestBase,
         start_ts = datetime.datetime(2012, 7, 2, 10, 42)
         end_ts = datetime.datetime(2012, 7, 2, 10, 43)
 
-        resources = list(self.conn.get_resources(start_timestamp=start_ts,
-                                                 end_timestamp=end_ts))
+        resources = list(self.collector_conn.get_resources(
+            start_timestamp=start_ts, end_timestamp=end_ts))
         resource_ids = [r.resource_id for r in resources]
         self.assertEqual(set(resource_ids), set(['resource-id-2']))
 
-        resources = list(self.conn.get_resources(start_timestamp=start_ts,
-                                                 end_timestamp=end_ts,
-                                                 start_timestamp_op='ge',
-                                                 end_timestamp_op='lt'))
+        resources = list(self.collector_conn.get_resources(
+            start_timestamp=start_ts, end_timestamp=end_ts,
+            start_timestamp_op='ge', end_timestamp_op='lt'))
         resource_ids = [r.resource_id for r in resources]
         self.assertEqual(set(resource_ids), set(['resource-id-2']))
 
-        resources = list(self.conn.get_resources(start_timestamp=start_ts,
-                                                 end_timestamp=end_ts,
-                                                 start_timestamp_op='gt',
-                                                 end_timestamp_op='lt'))
+        resources = list(self.collector_conn.get_resources(
+            start_timestamp=start_ts, end_timestamp=end_ts,
+            start_timestamp_op='gt', end_timestamp_op='lt'))
         resource_ids = [r.resource_id for r in resources]
         self.assertEqual(len(resource_ids), 0)
 
-        resources = list(self.conn.get_resources(start_timestamp=start_ts,
-                                                 end_timestamp=end_ts,
-                                                 start_timestamp_op='gt',
-                                                 end_timestamp_op='le'))
+        resources = list(self.collector_conn.get_resources(
+            start_timestamp=start_ts, end_timestamp=end_ts,
+            start_timestamp_op='gt', end_timestamp_op='le'))
         resource_ids = [r.resource_id for r in resources]
         self.assertEqual(set(resource_ids), set(['resource-id-3']))
 
-        resources = list(self.conn.get_resources(start_timestamp=start_ts,
-                                                 end_timestamp=end_ts,
-                                                 start_timestamp_op='ge',
-                                                 end_timestamp_op='le'))
+        resources = list(self.collector_conn.get_resources(
+            start_timestamp=start_ts, end_timestamp=end_ts,
+            start_timestamp_op='ge', end_timestamp_op='le'))
         resource_ids = [r.resource_id for r in resources]
         self.assertEqual(set(resource_ids),
                          set(['resource-id-2', 'resource-id-3']))
 
     def test_get_resources_by_source(self):
-        resources = list(self.conn.get_resources(source='test-1'))
+        resources = list(self.collector_conn.get_resources(source='test-1'))
         self.assertEqual(len(resources), 1)
         ids = set(r.resource_id for r in resources)
         self.assertEqual(ids, set(['resource-id']))
 
     def test_get_resources_by_user(self):
-        resources = list(self.conn.get_resources(user='user-id'))
+        resources = list(self.collector_conn.get_resources(user='user-id'))
         self.assertTrue(len(resources) == 2 or len(resources) == 1)
         ids = set(r.resource_id for r in resources)
         # tolerate storage driver only reporting latest owner of resource
@@ -274,28 +272,32 @@ class ResourceTest(DBTestBase,
                         'unexpected resources: %s' % ids)
 
     def test_get_resources_by_alternate_user(self):
-        resources = list(self.conn.get_resources(user='user-id-alternate'))
+        resources = list(self.collector_conn.get_resources(
+            user='user-id-alternate'))
         self.assertEqual(1, len(resources))
         # only a single resource owned by this user ever
         self.assertEqual('resource-id-alternate', resources[0].resource_id)
 
     def test_get_resources_by_project(self):
-        resources = list(self.conn.get_resources(project='project-id'))
+        resources = list(self.collector_conn.get_resources(
+            project='project-id'))
         self.assertEqual(len(resources), 2)
         ids = set(r.resource_id for r in resources)
         self.assertEqual(ids, set(['resource-id', 'resource-id-alternate']))
 
     def test_get_resources_by_metaquery(self):
         q = {'metadata.display_name': 'test-server'}
-        resources = list(self.conn.get_resources(metaquery=q))
+        resources = list(self.collector_conn.get_resources(
+            metaquery=q))
         self.assertEqual(len(resources), 9)
 
     def test_get_resources_by_empty_metaquery(self):
-        resources = list(self.conn.get_resources(metaquery={}))
+        resources = list(self.collector_conn.get_resources(
+            metaquery={}))
         self.assertEqual(len(resources), 9)
 
     def test_get_resources_most_recent_metadata_all(self):
-        resources = self.conn.get_resources()
+        resources = self.collector_conn.get_resources()
         expected_tags = ['self.counter', 'self.counter3', 'counter-2',
                          'counter-3', 'counter-4', 'counter-5', 'counter-6',
                          'counter-7', 'counter-8']
@@ -305,7 +307,7 @@ class ResourceTest(DBTestBase,
 
     def test_get_resources_most_recent_metadata_single(self):
         resource = list(
-            self.conn.get_resources(resource='resource-id-alternate')
+            self.collector_conn.get_resources(resource='resource-id-alternate')
         )[0]
         expected_tag = 'self.counter3'
         self.assertEqual(resource.metadata['tag'], expected_tag)
@@ -316,11 +318,13 @@ class ResourceTestPagination(DBTestBase,
 
     def test_get_resource_all_limit(self):
         pagination = base.Pagination(limit=8)
-        results = list(self.conn.get_resources(pagination=pagination))
+        results = list(self.collector_conn.get_resources(
+            pagination=pagination))
         self.assertEqual(len(results), 8)
 
         pagination = base.Pagination(limit=5)
-        results = list(self.conn.get_resources(pagination=pagination))
+        results = list(self.collector_conn.get_resources(
+            pagination=pagination))
         self.assertEqual(len(results), 5)
 
     def test_get_resources_all_marker(self):
@@ -328,28 +332,31 @@ class ResourceTestPagination(DBTestBase,
                                      sort_keys=['user_id'],
                                      sort_dirs=['asc'],
                                      marker_value='resource-id-4')
-        results = list(self.conn.get_resources(pagination=pagination))
+        results = list(self.collector_conn.get_resources(
+            pagination=pagination))
         self.assertEqual(len(results), 5)
 
     def test_get_resources_paginate(self):
         pagination = base.Pagination(limit=3, primary_sort_dir='asc',
                                      sort_keys=['user_id'], sort_dirs=['asc'],
                                      marker_value='resource-id-4')
-        results = self.conn.get_resources(pagination=pagination)
+        results = self.collector_conn.get_resources(pagination=pagination)
         self.assertEqual(['user-id-5', 'user-id-6', 'user-id-7'],
                          [i.user_id for i in results])
 
         pagination = base.Pagination(limit=2, primary_sort_dir='desc',
                                      sort_keys=['user_id'], sort_dirs=['asc'],
                                      marker_value='resource-id-4')
-        results = list(self.conn.get_resources(pagination=pagination))
+        results = list(self.collector_conn.get_resources(
+            pagination=pagination))
         self.assertEqual(['user-id-3', 'user-id-2'],
                          [i.user_id for i in results])
 
         pagination = base.Pagination(limit=3, primary_sort_dir='asc',
                                      sort_keys=['user_id'], sort_dirs=['asc'],
                                      marker_value='resource-id-5')
-        results = list(self.conn.get_resources(pagination=pagination))
+        results = list(self.collector_conn.get_resources(
+            pagination=pagination))
         self.assertEqual(['resource-id-6', 'resource-id-7', 'resource-id-8'],
                          [i.resource_id for i in results])
 
@@ -390,7 +397,7 @@ class ResourceTestOrdering(DBTestBase,
                 counter += 1
 
     def test_get_resources_ordering_all(self):
-        resources = list(self.conn.get_resources())
+        resources = list(self.collector_conn.get_resources())
         expected = set([
             ('resource-id-1', 'sample-3'),
             ('resource-id-2', 'sample-8'),
@@ -400,7 +407,8 @@ class ResourceTestOrdering(DBTestBase,
         self.assertEqual(received, expected)
 
     def test_get_resources_ordering_single(self):
-        resource = list(self.conn.get_resources(resource='resource-id-2'))[0]
+        resource = list(self.collector_conn.get_resources(
+            resource='resource-id-2'))[0]
         self.assertEqual(resource.resource_id, 'resource-id-2')
         self.assertEqual(resource.metadata['tag'], 'sample-8')
 
@@ -410,27 +418,27 @@ class MeterTest(DBTestBase,
 
     def test_get_meters(self):
         msgs_sources = [msg['source'] for msg in self.msgs]
-        results = list(self.conn.get_meters())
+        results = list(self.collector_conn.get_meters())
         self.assertEqual(len(results), 9)
         for meter in results:
             self.assertIn(meter.source, msgs_sources)
 
     def test_get_meters_by_user(self):
-        results = list(self.conn.get_meters(user='user-id'))
+        results = list(self.collector_conn.get_meters(user='user-id'))
         self.assertEqual(len(results), 1)
 
     def test_get_meters_by_project(self):
-        results = list(self.conn.get_meters(project='project-id'))
+        results = list(self.collector_conn.get_meters(project='project-id'))
         self.assertEqual(len(results), 2)
 
     def test_get_meters_by_metaquery(self):
         q = {'metadata.display_name': 'test-server'}
-        results = list(self.conn.get_meters(metaquery=q))
+        results = list(self.collector_conn.get_meters(metaquery=q))
         self.assertIsNotEmpty(results)
         self.assertEqual(len(results), 9)
 
     def test_get_meters_by_empty_metaquery(self):
-        results = list(self.conn.get_meters(metaquery={}))
+        results = list(self.collector_conn.get_meters(metaquery={}))
         self.assertEqual(len(results), 9)
 
 
@@ -439,11 +447,11 @@ class MeterTestPagination(DBTestBase,
 
     def tet_get_meters_all_limit(self):
         pagination = base.Pagination(limit=8)
-        results = list(self.conn.get_meters(pagination=pagination))
+        results = list(self.collector_conn.get_meters(pagination=pagination))
         self.assertEqual(len(results), 8)
 
         pagination = base.Pagination(limit=5)
-        results = list(self.conn.get_meters(pagination=pagination))
+        results = list(self.collector_conn.get_meters(pagination=pagination))
         self.assertEqual(len(results), 5)
 
     def test_get_meters_all_marker(self):
@@ -452,35 +460,35 @@ class MeterTestPagination(DBTestBase,
                                      sort_dirs=['desc'],
                                      marker_value='resource-id-5')
 
-        results = list(self.conn.get_meters(pagination=pagination))
+        results = list(self.collector_conn.get_meters(pagination=pagination))
         self.assertEqual(len(results), 8)
 
     def test_get_meters_paginate(self):
         pagination = base.Pagination(limit=3, primary_sort_dir='desc',
                                      sort_keys=['user_id'], sort_dirs=['desc'],
                                      marker_value='resource-id-5')
-        results = self.conn.get_meters(pagination=pagination)
+        results = self.collector_conn.get_meters(pagination=pagination)
         self.assertEqual(['user-id-8', 'user-id-7', 'user-id-6'],
                          [i.user_id for i in results])
 
         pagination = base.Pagination(limit=3, primary_sort_dir='asc',
                                      sort_keys=['user_id'], sort_dirs=['desc'],
                                      marker_value='resource-id-5')
-        results = self.conn.get_meters(pagination=pagination)
+        results = self.collector_conn.get_meters(pagination=pagination)
         self.assertEqual(['user-id-5', 'user-id-6', 'user-id-7'],
                          [i.user_id for i in results])
 
         pagination = base.Pagination(limit=2, primary_sort_dir='desc',
                                      sort_keys=['user_id'], sort_dirs=['desc'],
                                      marker_value='resource-id-5')
-        results = list(self.conn.get_meters(pagination=pagination))
+        results = list(self.collector_conn.get_meters(pagination=pagination))
         self.assertEqual(['user-id-3', 'user-id-2'],
                          [i.user_id for i in results])
 
         pagination = base.Pagination(limit=3, primary_sort_dir='desc',
                                      sort_keys=['user_id'], sort_dirs=['desc'],
                                      marker_value='resource-id-5')
-        results = self.conn.get_meters(pagination=pagination)
+        results = self.collector_conn.get_meters(pagination=pagination)
         self.assertEqual([], [i.user_id for i in results])
 
 
@@ -489,12 +497,12 @@ class RawSampleTest(DBTestBase,
 
     def test_get_samples_limit_zero(self):
         f = storage.SampleFilter()
-        results = list(self.conn.get_samples(f, limit=0))
+        results = list(self.collector_conn.get_samples(f, limit=0))
         self.assertEqual(len(results), 0)
 
     def test_get_samples_limit(self):
         f = storage.SampleFilter()
-        results = list(self.conn.get_samples(f, limit=3))
+        results = list(self.collector_conn.get_samples(f, limit=3))
         self.assertEqual(len(results), 3)
         for result in results:
             self.assertTimestampEqual(result.recorded_at,
@@ -503,14 +511,14 @@ class RawSampleTest(DBTestBase,
     def test_get_samples_in_default_order(self):
         f = storage.SampleFilter()
         prev_timestamp = None
-        for sample in self.conn.get_samples(f):
+        for sample in self.collector_conn.get_samples(f):
             if prev_timestamp is not None:
                 self.assertTrue(prev_timestamp >= sample.timestamp)
             prev_timestamp = sample.timestamp
 
     def test_get_samples_by_user(self):
         f = storage.SampleFilter(user='user-id')
-        results = list(self.conn.get_samples(f))
+        results = list(self.collector_conn.get_samples(f))
         self.assertEqual(len(results), 3)
         for meter in results:
             d = meter.as_dict()
@@ -521,17 +529,17 @@ class RawSampleTest(DBTestBase,
 
     def test_get_samples_by_user_limit(self):
         f = storage.SampleFilter(user='user-id')
-        results = list(self.conn.get_samples(f, limit=1))
+        results = list(self.collector_conn.get_samples(f, limit=1))
         self.assertEqual(len(results), 1)
 
     def test_get_samples_by_user_limit_bigger(self):
         f = storage.SampleFilter(user='user-id')
-        results = list(self.conn.get_samples(f, limit=42))
+        results = list(self.collector_conn.get_samples(f, limit=42))
         self.assertEqual(len(results), 3)
 
     def test_get_samples_by_project(self):
         f = storage.SampleFilter(project='project-id')
-        results = list(self.conn.get_samples(f))
+        results = list(self.collector_conn.get_samples(f))
         self.assertIsNotNone(results)
         for meter in results:
             d = meter.as_dict()
@@ -542,7 +550,7 @@ class RawSampleTest(DBTestBase,
 
     def test_get_samples_by_resource(self):
         f = storage.SampleFilter(user='user-id', resource='resource-id')
-        results = list(self.conn.get_samples(f))
+        results = list(self.collector_conn.get_samples(f))
         self.assertIsNotEmpty(results)
         meter = results[1]
         d = meter.as_dict()
@@ -553,7 +561,7 @@ class RawSampleTest(DBTestBase,
     def test_get_samples_by_metaquery(self):
         q = {'metadata.display_name': 'test-server'}
         f = storage.SampleFilter(metaquery=q)
-        results = list(self.conn.get_samples(f))
+        results = list(self.collector_conn.get_samples(f))
         self.assertIsNotNone(results)
         for meter in results:
             d = meter.as_dict()
@@ -569,17 +577,17 @@ class RawSampleTest(DBTestBase,
             start=timestamp,
         )
 
-        results = list(self.conn.get_samples(f))
+        results = list(self.collector_conn.get_samples(f))
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].timestamp, timestamp)
 
         f.start_timestamp_op = 'ge'
-        results = list(self.conn.get_samples(f))
+        results = list(self.collector_conn.get_samples(f))
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].timestamp, timestamp)
 
         f.start_timestamp_op = 'gt'
-        results = list(self.conn.get_samples(f))
+        results = list(self.collector_conn.get_samples(f))
         self.assertEqual(len(results), 0)
 
     def test_get_samples_by_end_time(self):
@@ -589,15 +597,15 @@ class RawSampleTest(DBTestBase,
             end=timestamp,
         )
 
-        results = list(self.conn.get_samples(f))
+        results = list(self.collector_conn.get_samples(f))
         self.assertEqual(len(results), 1)
 
         f.end_timestamp_op = 'lt'
-        results = list(self.conn.get_samples(f))
+        results = list(self.collector_conn.get_samples(f))
         self.assertEqual(len(results), 1)
 
         f.end_timestamp_op = 'le'
-        results = list(self.conn.get_samples(f))
+        results = list(self.collector_conn.get_samples(f))
         self.assertEqual(len(results), 2)
         self.assertEqual(results[1].timestamp,
                          datetime.datetime(2012, 7, 2, 10, 39))
@@ -610,89 +618,89 @@ class RawSampleTest(DBTestBase,
             end=end_ts,
         )
 
-        results = list(self.conn.get_samples(f))
+        results = list(self.collector_conn.get_samples(f))
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].timestamp, start_ts)
 
         f.start_timestamp_op = 'gt'
         f.end_timestamp_op = 'lt'
-        results = list(self.conn.get_samples(f))
+        results = list(self.collector_conn.get_samples(f))
         self.assertEqual(len(results), 0)
 
         f.start_timestamp_op = 'ge'
         f.end_timestamp_op = 'lt'
-        results = list(self.conn.get_samples(f))
+        results = list(self.collector_conn.get_samples(f))
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].timestamp, start_ts)
 
         f.start_timestamp_op = 'gt'
         f.end_timestamp_op = 'le'
-        results = list(self.conn.get_samples(f))
+        results = list(self.collector_conn.get_samples(f))
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].timestamp, end_ts)
 
         f.start_timestamp_op = 'ge'
         f.end_timestamp_op = 'le'
-        results = list(self.conn.get_samples(f))
+        results = list(self.collector_conn.get_samples(f))
         self.assertEqual(len(results), 2)
         self.assertEqual(results[0].timestamp, end_ts)
         self.assertEqual(results[1].timestamp, start_ts)
 
     def test_get_samples_by_name(self):
         f = storage.SampleFilter(user='user-id', meter='no-such-meter')
-        results = list(self.conn.get_samples(f))
+        results = list(self.collector_conn.get_samples(f))
         self.assertIsEmpty(results)
 
     def test_get_samples_by_name2(self):
         f = storage.SampleFilter(user='user-id', meter='instance')
-        results = list(self.conn.get_samples(f))
+        results = list(self.collector_conn.get_samples(f))
         self.assertIsNotEmpty(results)
 
     def test_get_samples_by_source(self):
         f = storage.SampleFilter(source='test-1')
-        results = list(self.conn.get_samples(f))
+        results = list(self.collector_conn.get_samples(f))
         self.assertEqual(len(results), 2)
 
     def test_clear_metering_data(self):
         # NOTE(jd) Override this test in MongoDB because our code doesn't clear
         # the collections, this is handled by MongoDB TTL feature.
-        if isinstance(self.conn, mongodb.Connection):
+        if isinstance(self.collector_conn, mongodb.Connection):
             return
 
         self.mock_utcnow.return_value = datetime.datetime(2012, 7, 2, 10, 45)
-        self.conn.clear_expired_metering_data(3 * 60)
+        self.collector_conn.clear_expired_metering_data(3 * 60)
         f = storage.SampleFilter(meter='instance')
-        results = list(self.conn.get_samples(f))
+        results = list(self.collector_conn.get_samples(f))
         self.assertEqual(len(results), 5)
-        results = list(self.conn.get_users())
+        results = list(self.collector_conn.get_users())
         self.assertEqual(len(results), 5)
-        results = list(self.conn.get_projects())
+        results = list(self.collector_conn.get_projects())
         self.assertEqual(len(results), 5)
-        results = list(self.conn.get_resources())
+        results = list(self.collector_conn.get_resources())
         self.assertEqual(len(results), 5)
 
     def test_clear_metering_data_no_data_to_remove(self):
         # NOTE(jd) Override this test in MongoDB because our code doesn't clear
         # the collections, this is handled by MongoDB TTL feature.
-        if isinstance(self.conn, mongodb.Connection):
+        if isinstance(self.collector_conn, mongodb.Connection):
             return
 
         self.mock_utcnow.return_value = datetime.datetime(2010, 7, 2, 10, 45)
-        self.conn.clear_expired_metering_data(3 * 60)
+        self.collector_conn.clear_expired_metering_data(3 * 60)
         f = storage.SampleFilter(meter='instance')
-        results = list(self.conn.get_samples(f))
+        results = list(self.collector_conn.get_samples(f))
         self.assertEqual(len(results), 11)
-        results = list(self.conn.get_users())
+        results = list(self.collector_conn.get_users())
         self.assertEqual(len(results), 9)
-        results = list(self.conn.get_projects())
+        results = list(self.collector_conn.get_projects())
         self.assertEqual(len(results), 8)
-        results = list(self.conn.get_resources())
+        results = list(self.collector_conn.get_resources())
         self.assertEqual(len(results), 9)
 
     def test_clear_metering_data_with_alarms(self):
         # NOTE(jd) Override this test in MongoDB because our code doesn't clear
         # the collections, this is handled by MongoDB TTL feature.
-        if isinstance(self.conn, mongodb.Connection):
+        if isinstance(self.collector_conn, mongodb.Connection):
             return
 
         alarm = models.Alarm(alarm_id='r3d',
@@ -722,19 +730,19 @@ class RawSampleTest(DBTestBase,
                                               'type': 'string'}]),
                              )
 
-        self.conn.create_alarm(alarm)
+        self.alarm_conn.create_alarm(alarm)
         self.mock_utcnow.return_value = datetime.datetime(2012, 7, 2, 10, 45)
-        self.conn.clear_expired_metering_data(5)
+        self.collector_conn.clear_expired_metering_data(5)
         f = storage.SampleFilter(meter='instance')
-        results = list(self.conn.get_samples(f))
+        results = list(self.collector_conn.get_samples(f))
         self.assertEqual(len(results), 2)
-        results = list(self.conn.get_users())
+        results = list(self.collector_conn.get_users())
         self.assertEqual(len(results), 2)
         self.assertNotIn('user-id', results)
-        results = list(self.conn.get_projects())
+        results = list(self.collector_conn.get_projects())
         self.assertEqual(len(results), 2)
         self.assertNotIn('project-id', results)
-        results = list(self.conn.get_resources())
+        results = list(self.collector_conn.get_resources())
         self.assertEqual(len(results), 2)
 
 
@@ -786,7 +794,7 @@ class ComplexSampleQueryTest(DBTestBase,
                                              volume=volume)
 
     def test_no_filter(self):
-        results = list(self.conn.query_samples())
+        results = list(self.collector_conn.query_samples())
         self.assertEqual(len(results), len(self.msgs))
         for sample in results:
             d = sample.as_dict()
@@ -795,32 +803,34 @@ class ComplexSampleQueryTest(DBTestBase,
 
     def test_no_filter_with_zero_limit(self):
         limit = 0
-        results = list(self.conn.query_samples(limit=limit))
+        results = list(self.collector_conn.query_samples(limit=limit))
         self.assertEqual(len(results), limit)
 
     def test_no_filter_with_limit(self):
         limit = 3
-        results = list(self.conn.query_samples(limit=limit))
+        results = list(self.collector_conn.query_samples(limit=limit))
         self.assertEqual(len(results), limit)
 
     def test_query_simple_filter(self):
         simple_filter = {"=": {"resource_id": "resource-id-8"}}
-        results = list(self.conn.query_samples(filter_expr=simple_filter))
+        results = list(self.collector_conn.query_samples(
+            filter_expr=simple_filter))
         self.assertEqual(len(results), 1)
         for sample in results:
             self.assertEqual(sample.resource_id, "resource-id-8")
 
     def test_query_simple_filter_with_not_equal_relation(self):
         simple_filter = {"!=": {"resource_id": "resource-id-8"}}
-        results = list(self.conn.query_samples(filter_expr=simple_filter))
+        results = list(self.collector_conn.query_samples(
+            filter_expr=simple_filter))
         self.assertEqual(len(results), len(self.msgs) - 1)
         for sample in results:
             self.assertNotEqual(sample.resource_id, "resource-id-8")
 
     def test_query_complex_filter(self):
         self._create_samples()
-        results = list(self.conn.query_samples(filter_expr=
-                                               self.complex_filter))
+        results = list(self.collector_conn.query_samples(
+            filter_expr=self.complex_filter))
         self.assertEqual(len(results), 6)
         for sample in results:
             self.assertIn(sample.resource_id,
@@ -833,16 +843,16 @@ class ComplexSampleQueryTest(DBTestBase,
     def test_query_complex_filter_with_limit(self):
         self._create_samples()
         limit = 3
-        results = list(self.conn.query_samples(filter_expr=self.complex_filter,
-                                               limit=limit))
+        results = list(self.collector_conn.query_samples(
+            filter_expr=self.complex_filter, limit=limit))
         self.assertEqual(len(results), limit)
 
     def test_query_complex_filter_with_simple_orderby(self):
         self._create_samples()
         expected_volume_order = [0.41, 0.41, 0.79, 0.79, 0.8, 0.8]
         orderby = [{"counter_volume": "asc"}]
-        results = list(self.conn.query_samples(filter_expr=self.complex_filter,
-                                               orderby=orderby))
+        results = list(self.collector_conn.query_samples(
+            filter_expr=self.complex_filter, orderby=orderby))
         self.assertEqual(expected_volume_order,
                          [s.counter_volume for s in results])
 
@@ -855,8 +865,8 @@ class ComplexSampleQueryTest(DBTestBase,
 
         orderby = [{"counter_volume": "asc"}, {"resource_id": "desc"}]
 
-        results = list(self.conn.query_samples(filter_expr=self.complex_filter,
-                       orderby=orderby))
+        results = list(self.collector_conn.query_samples(
+            filter_expr=self.complex_filter, orderby=orderby))
 
         self.assertEqual(expected_volume_order,
                          [s.counter_volume for s in results])
@@ -865,8 +875,8 @@ class ComplexSampleQueryTest(DBTestBase,
 
     def test_query_complex_filter_with_list(self):
         self._create_samples()
-        results = list(
-            self.conn.query_samples(filter_expr=self.complex_filter_list))
+        results = list(self.collector_conn.query_samples(
+            filter_expr=self.complex_filter_list))
         self.assertEqual(len(results), 9)
         for sample in results:
             self.assertIn(sample.resource_id,
@@ -881,9 +891,8 @@ class ComplexSampleQueryTest(DBTestBase,
     def test_query_complex_filter_with_list_with_limit(self):
         self._create_samples()
         limit = 3
-        results = list(
-            self.conn.query_samples(filter_expr=self.complex_filter_list,
-                                    limit=limit))
+        results = list(self.collector_conn.query_samples(
+            filter_expr=self.complex_filter_list, limit=limit))
         self.assertEqual(len(results), limit)
 
     def test_query_complex_filter_with_list_with_simple_orderby(self):
@@ -891,9 +900,8 @@ class ComplexSampleQueryTest(DBTestBase,
         expected_volume_order = [0.41, 0.41, 0.41, 0.79, 0.79,
                                  0.79, 0.8, 0.8, 0.8]
         orderby = [{"counter_volume": "asc"}]
-        results = list(
-            self.conn.query_samples(filter_expr=self.complex_filter_list,
-                                    orderby=orderby))
+        results = list(self.collector_conn.query_samples(
+            filter_expr=self.complex_filter_list, orderby=orderby))
         self.assertEqual(expected_volume_order,
                          [s.counter_volume for s in results])
 
@@ -909,9 +917,8 @@ class ComplexSampleQueryTest(DBTestBase,
 
         orderby = [{"counter_volume": "asc"}, {"resource_id": "desc"}]
 
-        results = list(
-            self.conn.query_samples(filter_expr=self.complex_filter_list,
-                                    orderby=orderby))
+        results = list(self.collector_conn.query_samples(
+            filter_expr=self.complex_filter_list, orderby=orderby))
 
         self.assertEqual(expected_volume_order,
                          [s.counter_volume for s in results])
@@ -924,15 +931,14 @@ class ComplexSampleQueryTest(DBTestBase,
         orderby = [{"counter_volume": "not valid order"},
                    {"resource_id": "desc"}]
 
-        query = lambda: list(self.conn.query_samples(filter_expr=
-                                                     self.complex_filter,
-                                                     orderby=orderby))
+        query = lambda: list(self.collector_conn.query_samples(
+            filter_expr=self.complex_filter, orderby=orderby))
         self.assertRaises(KeyError, query)
 
     def test_query_complex_filter_with_in(self):
         self._create_samples()
-        results = list(
-            self.conn.query_samples(filter_expr=self.complex_filter_in))
+        results = list(self.collector_conn.query_samples(
+            filter_expr=self.complex_filter_in))
         self.assertEqual(len(results), 9)
         for sample in results:
             self.assertIn(sample.resource_id,
@@ -949,7 +955,8 @@ class ComplexSampleQueryTest(DBTestBase,
 
         filter_expr = {"=": {"resource_metadata.a_bool_key": True}}
 
-        results = list(self.conn.query_samples(filter_expr=filter_expr))
+        results = list(self.collector_conn.query_samples(
+            filter_expr=filter_expr))
 
         self.assertEqual(len(results), 6)
         for sample in results:
@@ -960,7 +967,8 @@ class ComplexSampleQueryTest(DBTestBase,
 
         filter_expr = {"in": {"resource_metadata.an_int_key": [42, 43]}}
 
-        results = list(self.conn.query_samples(filter_expr=filter_expr))
+        results = list(self.collector_conn.query_samples(
+            filter_expr=filter_expr))
 
         self.assertEqual(len(results), 12)
         for sample in results:
@@ -974,13 +982,14 @@ class ComplexSampleQueryTest(DBTestBase,
         filter_expr = {"and": [{">": {"resource_metadata.an_int_key": 42}},
                                subfilter]}
 
-        results = list(self.conn.query_samples(filter_expr=filter_expr))
+        results = list(self.collector_conn.query_samples(
+            filter_expr=filter_expr))
 
         self.assertEqual(len(results), 8)
         for sample in results:
             self.assertTrue((sample.resource_metadata["a_string_key"] ==
                             "meta-value0.81" or
-                            sample.resource_metadata["a_float_key"] <= 0.41))
+                             sample.resource_metadata["a_float_key"] <= 0.41))
             self.assertTrue(sample.resource_metadata["an_int_key"] > 42)
 
     def test_query_mixed_data_and_metadata_filter(self):
@@ -992,13 +1001,14 @@ class ComplexSampleQueryTest(DBTestBase,
         filter_expr = {"and": [{"=": {"resource_id": "resource-id-42"}},
                                subfilter]}
 
-        results = list(self.conn.query_samples(filter_expr=filter_expr))
+        results = list(self.collector_conn.query_samples(
+            filter_expr=filter_expr))
 
         self.assertEqual(len(results), 4)
         for sample in results:
             self.assertTrue((sample.resource_metadata["a_string_key"] ==
                             "meta-value0.81" or
-                            sample.resource_metadata["a_float_key"] <= 0.41))
+                             sample.resource_metadata["a_float_key"] <= 0.41))
             self.assertEqual(sample.resource_id, "resource-id-42")
 
     def test_query_non_existing_metadata_with_result(self):
@@ -1009,7 +1019,8 @@ class ComplexSampleQueryTest(DBTestBase,
                           "meta-value0.81"}},
                    {"<=": {"resource_metadata.key_not_exists": 0.41}}]}
 
-        results = list(self.conn.query_samples(filter_expr=filter_expr))
+        results = list(self.collector_conn.query_samples(
+            filter_expr=filter_expr))
 
         self.assertEqual(len(results), 3)
         for sample in results:
@@ -1024,7 +1035,8 @@ class ComplexSampleQueryTest(DBTestBase,
                           "meta-value0.81"}},
                    {"<=": {"resource_metadata.key_not_exists": 0.41}}]}
 
-        results = list(self.conn.query_samples(filter_expr=filter_expr))
+        results = list(self.collector_conn.query_samples(
+            filter_expr=filter_expr))
         self.assertEqual(len(results), 0)
 
     def test_query_negated_metadata(self):
@@ -1037,7 +1049,8 @@ class ComplexSampleQueryTest(DBTestBase,
                                     {"<=": {"resource_metadata.a_float_key":
                                             0.41}}]}}]}
 
-        results = list(self.conn.query_samples(filter_expr=filter_expr))
+        results = list(self.collector_conn.query_samples(
+            filter_expr=filter_expr))
 
         self.assertEqual(len(results), 3)
         for sample in results:
@@ -1059,7 +1072,8 @@ class ComplexSampleQueryTest(DBTestBase,
                  [{">": {"counter_volume": 0.4}},
                   {"<": {"counter_volume": 0.8}}]}]}}]}
 
-        results = list(self.conn.query_samples(filter_expr=filter_expr))
+        results = list(self.collector_conn.query_samples(
+            filter_expr=filter_expr))
 
         self.assertEqual(len(results), 4)
         for sample in results:
@@ -1082,7 +1096,8 @@ class ComplexSampleQueryTest(DBTestBase,
                 {"and": [{"not": {"<=": {"counter_volume": 0.4}}},
                          {"<": {"counter_volume": 0.8}}]}]}}]}
 
-        results = list(self.conn.query_samples(filter_expr=filter_expr))
+        results = list(self.collector_conn.query_samples(
+            filter_expr=filter_expr))
 
         self.assertEqual(len(results), 4)
         for sample in results:
@@ -1096,7 +1111,8 @@ class ComplexSampleQueryTest(DBTestBase,
         self._create_samples()
         filter_expr = {"not": {"!=": {"resource_id": "resource-id-43"}}}
 
-        results = list(self.conn.query_samples(filter_expr=filter_expr))
+        results = list(self.collector_conn.query_samples(
+            filter_expr=filter_expr))
 
         self.assertEqual(len(results), 6)
         for sample in results:
@@ -1109,7 +1125,8 @@ class ComplexSampleQueryTest(DBTestBase,
             "and": [{"not": {"in": {"counter_volume": [0.39, 0.4, 0.79]}}},
                     {"=": {"resource_id": "resource-id-42"}}]}
 
-        results = list(self.conn.query_samples(filter_expr=filter_expr))
+        results = list(self.collector_conn.query_samples(
+            filter_expr=filter_expr))
 
         self.assertEqual(len(results), 3)
         for sample in results:
@@ -1140,7 +1157,7 @@ class StatisticsTest(DBTestBase,
                 c,
                 secret='not-so-secret',
             )
-            self.conn.record_metering_data(msg)
+            self.collector_conn.record_metering_data(msg)
         for i in range(3):
             c = sample.Sample(
                 'volume.size',
@@ -1160,7 +1177,7 @@ class StatisticsTest(DBTestBase,
                 c,
                 secret='not-so-secret',
             )
-            self.conn.record_metering_data(msg)
+            self.collector_conn.record_metering_data(msg)
         for i in range(3):
             c = sample.Sample(
                 'memory',
@@ -1178,13 +1195,13 @@ class StatisticsTest(DBTestBase,
                 c,
                 secret='not-so-secret',
             )
-            self.conn.record_metering_data(msg)
+            self.collector_conn.record_metering_data(msg)
 
     def test_by_meter(self):
         f = storage.SampleFilter(
             meter='memory'
         )
-        results = list(self.conn.get_meter_statistics(f))[0]
+        results = list(self.collector_conn.get_meter_statistics(f))[0]
         self.assertEqual(results.duration,
                          (datetime.datetime(2012, 9, 25, 12, 32)
                           - datetime.datetime(2012, 9, 25, 10, 30)).seconds)
@@ -1200,7 +1217,7 @@ class StatisticsTest(DBTestBase,
             user='user-5',
             meter='volume.size',
         )
-        results = list(self.conn.get_meter_statistics(f))[0]
+        results = list(self.collector_conn.get_meter_statistics(f))[0]
         self.assertEqual(results.duration,
                          (datetime.datetime(2012, 9, 25, 12, 32)
                           - datetime.datetime(2012, 9, 25, 10, 30)).seconds)
@@ -1216,14 +1233,14 @@ class StatisticsTest(DBTestBase,
             user='user-5',
             meter='volume.size',
         )
-        results = list(self.conn.get_meter_statistics(f))[0]
+        results = list(self.collector_conn.get_meter_statistics(f))[0]
         self.assertEqual(results.period, 0)
 
     def test_period_is_int(self):
         f = storage.SampleFilter(
             meter='volume.size',
         )
-        results = list(self.conn.get_meter_statistics(f))[0]
+        results = list(self.collector_conn.get_meter_statistics(f))[0]
         self.assertIs(type(results.period), int)
         self.assertEqual(results.count, 6)
 
@@ -1233,7 +1250,8 @@ class StatisticsTest(DBTestBase,
             meter='volume.size',
             start='2012-09-25T10:28:00',
         )
-        results = list(self.conn.get_meter_statistics(f, period=7200))
+        results = list(self.collector_conn.get_meter_statistics(f,
+                                                                period=7200))
         self.assertEqual(len(results), 2)
         self.assertEqual(set(r.period_start for r in results),
                          set([datetime.datetime(2012, 9, 25, 10, 28),
@@ -1292,7 +1310,8 @@ class StatisticsTest(DBTestBase,
                 meter='volume.size',
                 start=date
             )
-            results = list(self.conn.get_meter_statistics(f, period=7200))
+            results = list(self.collector_conn.get_meter_statistics(
+                f, period=7200))
             self.assertEqual(len(results), 2)
             self.assertEqual(set(r.period_start for r in results),
                              set([datetime.datetime(2012, 9, 25, 10, 28),
@@ -1308,7 +1327,8 @@ class StatisticsTest(DBTestBase,
             start='2012-09-25T10:28:00',
             end='2012-09-25T11:28:00',
         )
-        results = list(self.conn.get_meter_statistics(f, period=1800))
+        results = list(self.collector_conn.get_meter_statistics(
+            f, period=1800))
         self.assertEqual(len(results), 1)
         r = results[0]
         self.assertEqual(r.period_start,
@@ -1335,7 +1355,7 @@ class StatisticsTest(DBTestBase,
             start='2012-09-25T11:30:00',
             end='2012-09-25T11:32:00',
         )
-        results = list(self.conn.get_meter_statistics(f))[0]
+        results = list(self.collector_conn.get_meter_statistics(f))[0]
         self.assertEqual(results.duration, 0)
         self.assertEqual(results.count, 1)
         self.assertEqual(results.unit, 'GiB')
@@ -1349,7 +1369,7 @@ class StatisticsTest(DBTestBase,
             user='user-id',
             meter='volume.size',
         )
-        results = list(self.conn.get_meter_statistics(f))[0]
+        results = list(self.collector_conn.get_meter_statistics(f))[0]
         self.assertEqual(results.duration,
                          (datetime.datetime(2012, 9, 25, 12, 32)
                           - datetime.datetime(2012, 9, 25, 10, 30)).seconds)
@@ -1365,7 +1385,8 @@ class StatisticsTest(DBTestBase,
             user='user-not-exists',
             meter='volume.size',
         )
-        results = list(self.conn.get_meter_statistics(f, period=1800))
+        results = list(self.collector_conn.get_meter_statistics(
+            f, period=1800))
         self.assertEqual([], results)
 
 
@@ -1422,13 +1443,14 @@ class StatisticsGroupByTest(DBTestBase,
                 c,
                 self.CONF.publisher.metering_secret,
             )
-            self.conn.record_metering_data(msg)
+            self.collector_conn.record_metering_data(msg)
 
     def test_group_by_user(self):
         f = storage.SampleFilter(
             meter='instance',
         )
-        results = list(self.conn.get_meter_statistics(f, groupby=['user_id']))
+        results = list(self.collector_conn.get_meter_statistics(
+            f, groupby=['user_id']))
         self.assertEqual(len(results), 3)
         groupby_list = [r.groupby for r in results]
         groupby_keys_set = set(x for sub_dict in groupby_list
@@ -1465,8 +1487,8 @@ class StatisticsGroupByTest(DBTestBase,
         f = storage.SampleFilter(
             meter='instance',
         )
-        results = list(self.conn.get_meter_statistics(f,
-                                                      groupby=['resource_id']))
+        results = list(self.collector_conn.get_meter_statistics(
+            f, groupby=['resource_id']))
         self.assertEqual(len(results), 3)
         groupby_list = [r.groupby for r in results]
         groupby_keys_set = set(x for sub_dict in groupby_list
@@ -1504,8 +1526,8 @@ class StatisticsGroupByTest(DBTestBase,
         f = storage.SampleFilter(
             meter='instance',
         )
-        results = list(self.conn.get_meter_statistics(f,
-                                                      groupby=['project_id']))
+        results = list(self.collector_conn.get_meter_statistics(
+            f, groupby=['project_id']))
         self.assertEqual(len(results), 2)
         groupby_list = [r.groupby for r in results]
         groupby_keys_set = set(x for sub_dict in groupby_list
@@ -1535,7 +1557,8 @@ class StatisticsGroupByTest(DBTestBase,
         f = storage.SampleFilter(
             meter='instance',
         )
-        results = list(self.conn.get_meter_statistics(f, groupby=['source']))
+        results = list(self.collector_conn.get_meter_statistics(
+            f, groupby=['source']))
         self.assertEqual(len(results), 3)
         groupby_list = [r.groupby for r in results]
         groupby_keys_set = set(x for sub_dict in groupby_list
@@ -1582,7 +1605,8 @@ class StatisticsGroupByTest(DBTestBase,
         # MongoDB and SQLAlchemy in a single test.
         self.assertRaises(
             NotImplementedError,
-            lambda: list(self.conn.get_meter_statistics(f, groupby=['wtf']))
+            lambda: list(self.collector_conn.get_meter_statistics(
+                f, groupby=['wtf']))
         )
 
     def test_group_by_metadata(self):
@@ -1594,9 +1618,8 @@ class StatisticsGroupByTest(DBTestBase,
         f = storage.SampleFilter(
             meter='instance',
         )
-        results = list(self.conn.get_meter_statistics(f,
-                                                      groupby=['user_id',
-                                                               'resource_id']))
+        results = list(self.collector_conn.get_meter_statistics(
+            f, groupby=['user_id', 'resource_id']))
         self.assertEqual(len(results), 4)
         groupby_list = [r.groupby for r in results]
         groupby_keys_set = set(x for sub_dict in groupby_list
@@ -1670,7 +1693,7 @@ class StatisticsGroupByTest(DBTestBase,
             meter='instance',
             project='project-1',
         )
-        results = list(self.conn.get_meter_statistics(
+        results = list(self.collector_conn.get_meter_statistics(
             f,
             groupby=['resource_id']))
         self.assertEqual(len(results), 3)
@@ -1720,7 +1743,7 @@ class StatisticsGroupByTest(DBTestBase,
             user='user-2',
             source='source-1',
         )
-        results = list(self.conn.get_meter_statistics(
+        results = list(self.collector_conn.get_meter_statistics(
             f,
             groupby=['project_id', 'resource_id']))
         self.assertEqual(len(results), 3)
@@ -1773,9 +1796,8 @@ class StatisticsGroupByTest(DBTestBase,
         f = storage.SampleFilter(
             meter='instance',
         )
-        results = list(self.conn.get_meter_statistics(f,
-                                                      period=7200,
-                                                      groupby=['project_id']))
+        results = list(self.collector_conn.get_meter_statistics(
+            f, period=7200, groupby=['project_id']))
         self.assertEqual(len(results), 4)
         groupby_list = [r.groupby for r in results]
         groupby_keys_set = set(x for sub_dict in groupby_list
@@ -1875,9 +1897,8 @@ class StatisticsGroupByTest(DBTestBase,
             meter='instance',
             source='source-1',
         )
-        results = list(self.conn.get_meter_statistics(f,
-                                                      period=7200,
-                                                      groupby=['project_id']))
+        results = list(self.collector_conn.get_meter_statistics(
+            f, period=7200, groupby=['project_id']))
         self.assertEqual(len(results), 3)
         groupby_list = [r.groupby for r in results]
         groupby_keys_set = set(x for sub_dict in groupby_list
@@ -1961,8 +1982,8 @@ class StatisticsGroupByTest(DBTestBase,
             meter='instance',
             start=datetime.datetime(2013, 8, 1, 17, 28, 1),
         )
-        results = list(self.conn.get_meter_statistics(f,
-                                                      groupby=['project_id']))
+        results = list(self.collector_conn.get_meter_statistics(
+            f, groupby=['project_id']))
 
         self.assertEqual(results, [])
 
@@ -1971,8 +1992,8 @@ class StatisticsGroupByTest(DBTestBase,
             meter='instance',
             end=datetime.datetime(2013, 8, 1, 10, 10, 59),
         )
-        results = list(self.conn.get_meter_statistics(f,
-                                                      groupby=['project_id']))
+        results = list(self.collector_conn.get_meter_statistics(
+            f, groupby=['project_id']))
 
         self.assertEqual(results, [])
 
@@ -1981,8 +2002,8 @@ class StatisticsGroupByTest(DBTestBase,
             meter='instance',
             start=datetime.datetime(2013, 8, 1, 14, 58),
         )
-        results = list(self.conn.get_meter_statistics(f,
-                                                      groupby=['project_id']))
+        results = list(self.collector_conn.get_meter_statistics(
+            f, groupby=['project_id']))
         self.assertEqual(len(results), 2)
         groupby_list = [r.groupby for r in results]
         groupby_keys_set = set(x for sub_dict in groupby_list
@@ -2013,8 +2034,8 @@ class StatisticsGroupByTest(DBTestBase,
             meter='instance',
             end=datetime.datetime(2013, 8, 1, 11, 45),
         )
-        results = list(self.conn.get_meter_statistics(f,
-                                                      groupby=['project_id']))
+        results = list(self.collector_conn.get_meter_statistics(
+            f, groupby=['project_id']))
         self.assertEqual(len(results), 1)
         groupby_list = [r.groupby for r in results]
         groupby_keys_set = set(x for sub_dict in groupby_list
@@ -2039,8 +2060,8 @@ class StatisticsGroupByTest(DBTestBase,
             start=datetime.datetime(2013, 8, 1, 8, 17, 3),
             end=datetime.datetime(2013, 8, 1, 23, 59, 59),
         )
-        results = list(self.conn.get_meter_statistics(f,
-                                                      groupby=['project_id']))
+        results = list(self.collector_conn.get_meter_statistics(
+            f, groupby=['project_id']))
         self.assertEqual(len(results), 2)
         groupby_list = [r.groupby for r in results]
         groupby_keys_set = set(x for sub_dict in groupby_list
@@ -2073,8 +2094,8 @@ class StatisticsGroupByTest(DBTestBase,
             start=datetime.datetime(2013, 8, 1, 11, 1),
             end=datetime.datetime(2013, 8, 1, 20, 0),
         )
-        results = list(self.conn.get_meter_statistics(f,
-                                                      groupby=['resource_id']))
+        results = list(self.collector_conn.get_meter_statistics(
+            f, groupby=['resource_id']))
         groupby_list = [r.groupby for r in results]
         groupby_keys_set = set(x for sub_dict in groupby_list
                                for x in sub_dict.keys())
@@ -2105,9 +2126,8 @@ class StatisticsGroupByTest(DBTestBase,
             start=datetime.datetime(2013, 8, 1, 14, 0),
             end=datetime.datetime(2013, 8, 1, 17, 0),
         )
-        results = list(self.conn.get_meter_statistics(f,
-                                                      period=3600,
-                                                      groupby=['project_id']))
+        results = list(self.collector_conn.get_meter_statistics(
+            f, period=3600, groupby=['project_id']))
         self.assertEqual(len(results), 3)
         groupby_list = [r.groupby for r in results]
         groupby_keys_set = set(x for sub_dict in groupby_list
@@ -2189,9 +2209,8 @@ class StatisticsGroupByTest(DBTestBase,
             start=datetime.datetime(2013, 8, 1, 10, 0),
             end=datetime.datetime(2013, 8, 1, 18, 0),
         )
-        results = list(self.conn.get_meter_statistics(f,
-                                                      period=7200,
-                                                      groupby=['project_id']))
+        results = list(self.collector_conn.get_meter_statistics(
+            f, period=7200, groupby=['project_id']))
         self.assertEqual(len(results), 3)
         groupby_list = [r.groupby for r in results]
         groupby_keys_set = set(x for sub_dict in groupby_list
@@ -2287,7 +2306,7 @@ class CounterDataTypeTest(DBTestBase,
             self.CONF.publisher.metering_secret,
         )
 
-        self.conn.record_metering_data(msg)
+        self.collector_conn.record_metering_data(msg)
 
         c = sample.Sample(
             'dummySmallCounter',
@@ -2305,7 +2324,7 @@ class CounterDataTypeTest(DBTestBase,
             c,
             self.CONF.publisher.metering_secret,
         )
-        self.conn.record_metering_data(msg)
+        self.collector_conn.record_metering_data(msg)
 
         c = sample.Sample(
             'floatCounter',
@@ -2323,26 +2342,26 @@ class CounterDataTypeTest(DBTestBase,
             c,
             self.CONF.publisher.metering_secret,
         )
-        self.conn.record_metering_data(msg)
+        self.collector_conn.record_metering_data(msg)
 
     def test_storage_can_handle_large_values(self):
         f = storage.SampleFilter(
             meter='dummyBigCounter',
         )
-        results = list(self.conn.get_samples(f))
+        results = list(self.collector_conn.get_samples(f))
         self.assertEqual(results[0].counter_volume, 3372036854775807)
 
         f = storage.SampleFilter(
             meter='dummySmallCounter',
         )
-        results = list(self.conn.get_samples(f))
+        results = list(self.collector_conn.get_samples(f))
         self.assertEqual(results[0].counter_volume, -3372036854775807)
 
     def test_storage_can_handle_float_values(self):
         f = storage.SampleFilter(
             meter='floatCounter',
         )
-        results = list(self.conn.get_samples(f))
+        results = list(self.collector_conn.get_samples(f))
         self.assertEqual(results[0].counter_volume, 1938495037.53697)
 
 
@@ -2435,34 +2454,34 @@ class AlarmTestBase(DBTestBase):
                                )]
 
         for a in alarms:
-            self.conn.create_alarm(a)
+            self.alarm_conn.create_alarm(a)
 
 
 class AlarmTest(AlarmTestBase,
                 tests_db.MixinTestsWithBackendScenarios):
 
     def test_empty(self):
-        alarms = list(self.conn.get_alarms())
+        alarms = list(self.alarm_conn.get_alarms())
         self.assertEqual([], alarms)
 
     def test_list(self):
         self.add_some_alarms()
-        alarms = list(self.conn.get_alarms())
+        alarms = list(self.alarm_conn.get_alarms())
         self.assertEqual(len(alarms), 3)
 
     def test_list_enabled(self):
         self.add_some_alarms()
-        alarms = list(self.conn.get_alarms(enabled=True))
+        alarms = list(self.alarm_conn.get_alarms(enabled=True))
         self.assertEqual(len(alarms), 2)
 
     def test_list_disabled(self):
         self.add_some_alarms()
-        alarms = list(self.conn.get_alarms(enabled=False))
+        alarms = list(self.alarm_conn.get_alarms(enabled=False))
         self.assertEqual(len(alarms), 1)
 
     def test_add(self):
         self.add_some_alarms()
-        alarms = list(self.conn.get_alarms())
+        alarms = list(self.alarm_conn.get_alarms())
         self.assertEqual(len(alarms), 3)
 
         meter_names = sorted([a.rule['meter_name'] for a in alarms])
@@ -2471,7 +2490,7 @@ class AlarmTest(AlarmTestBase,
 
     def test_update(self):
         self.add_some_alarms()
-        orange = list(self.conn.get_alarms(name='orange-alert'))[0]
+        orange = list(self.alarm_conn.get_alarms(name='orange-alert'))[0]
         orange.enabled = False
         orange.state = models.Alarm.ALARM_INSUFFICIENT_DATA
         query = [{'field': 'metadata.group',
@@ -2480,7 +2499,7 @@ class AlarmTest(AlarmTestBase,
                   'type': 'string'}]
         orange.rule['query'] = query
         orange.rule['meter_name'] = 'new_meter_name'
-        updated = self.conn.update_alarm(orange)
+        updated = self.alarm_conn.update_alarm(orange)
         self.assertEqual(updated.enabled, False)
         self.assertEqual(updated.state, models.Alarm.ALARM_INSUFFICIENT_DATA)
         self.assertEqual(updated.rule['query'], query)
@@ -2510,19 +2529,19 @@ class AlarmTest(AlarmTestBase,
                                      meter_name='llt',
                                      query=[])
                            )
-        updated = self.conn.update_alarm(llu)
+        updated = self.alarm_conn.update_alarm(llu)
         updated.state = models.Alarm.ALARM_OK
         updated.description = ':)'
-        self.conn.update_alarm(updated)
+        self.alarm_conn.update_alarm(updated)
 
-        all = list(self.conn.get_alarms())
+        all = list(self.alarm_conn.get_alarms())
         self.assertEqual(len(all), 1)
 
     def test_delete(self):
         self.add_some_alarms()
-        victim = list(self.conn.get_alarms(name='orange-alert'))[0]
-        self.conn.delete_alarm(victim.alarm_id)
-        survivors = list(self.conn.get_alarms())
+        victim = list(self.alarm_conn.get_alarms(name='orange-alert'))[0]
+        self.alarm_conn.delete_alarm(victim.alarm_id)
+        survivors = list(self.alarm_conn.get_alarms())
         self.assertEqual(len(survivors), 2)
         for s in survivors:
             self.assertNotEqual(victim.name, s.name)
@@ -2534,26 +2553,26 @@ class AlarmTestPagination(AlarmTestBase,
     def test_get_alarm_all_limit(self):
         self.add_some_alarms()
         pagination = base.Pagination(limit=2)
-        alarms = list(self.conn.get_alarms(pagination=pagination))
+        alarms = list(self.alarm_conn.get_alarms(pagination=pagination))
         self.assertEqual(len(alarms), 2)
 
         pagination = base.Pagination(limit=1)
-        alarms = list(self.conn.get_alarms(pagination=pagination))
+        alarms = list(self.alarm_conn.get_alarms(pagination=pagination))
         self.assertEqual(len(alarms), 1)
 
     def test_get_alarm_all_marker(self):
         self.add_some_alarms()
 
         pagination = base.Pagination(marker_value='orange-alert')
-        alarms = list(self.conn.get_alarms(pagination=pagination))
+        alarms = list(self.alarm_conn.get_alarms(pagination=pagination))
         self.assertEqual(len(alarms), 0)
 
         pagination = base.Pagination(marker_value='red-alert')
-        alarms = list(self.conn.get_alarms(pagination=pagination))
+        alarms = list(self.alarm_conn.get_alarms(pagination=pagination))
         self.assertEqual(len(alarms), 1)
 
         pagination = base.Pagination(marker_value='yellow-alert')
-        alarms = list(self.conn.get_alarms(pagination=pagination))
+        alarms = list(self.alarm_conn.get_alarms(pagination=pagination))
         self.assertEqual(len(alarms), 2)
 
     def test_get_alarm_paginate(self):
@@ -2561,12 +2580,12 @@ class AlarmTestPagination(AlarmTestBase,
         self.add_some_alarms()
 
         pagination = base.Pagination(limit=4, marker_value='yellow-alert')
-        page = list(self.conn.get_alarms(pagination=pagination))
+        page = list(self.alarm_conn.get_alarms(pagination=pagination))
         self.assertEqual(['red-alert', 'orange-alert'], [i.name for i in page])
 
         pagination = base.Pagination(limit=2, marker_value='orange-alert',
                                      primary_sort_dir='asc')
-        page1 = list(self.conn.get_alarms(pagination=pagination))
+        page1 = list(self.alarm_conn.get_alarms(pagination=pagination))
         self.assertEqual(['red-alert', 'yellow-alert'],
                          [i.name for i in page1])
 
@@ -2576,12 +2595,12 @@ class ComplexAlarmQueryTest(AlarmTestBase,
 
     def test_no_filter(self):
         self.add_some_alarms()
-        result = list(self.conn.query_alarms())
+        result = list(self.alarm_conn.query_alarms())
         self.assertEqual(3, len(result))
 
     def test_no_filter_with_limit(self):
         self.add_some_alarms()
-        result = list(self.conn.query_alarms(limit=2))
+        result = list(self.alarm_conn.query_alarms(limit=2))
         self.assertEqual(2, len(result))
 
     def test_filter(self):
@@ -2590,9 +2609,10 @@ class ComplexAlarmQueryTest(AlarmTestBase,
                        [{"or":
                         [{"=": {"name": "yellow-alert"}},
                          {"=": {"name": "red-alert"}}]},
-                       {"=": {"enabled": True}}]}
+                        {"=": {"enabled": True}}]}
 
-        result = list(self.conn.query_alarms(filter_expr=filter_expr))
+        result = list(self.alarm_conn.query_alarms(
+            filter_expr=filter_expr))
 
         self.assertEqual(1, len(result))
         for a in result:
@@ -2603,7 +2623,8 @@ class ComplexAlarmQueryTest(AlarmTestBase,
         self.add_some_alarms()
         filter_expr = {"=": {"alarm_id": "0r4ng3"}}
 
-        result = list(self.conn.query_alarms(filter_expr=filter_expr))
+        result = list(self.alarm_conn.query_alarms(
+            filter_expr=filter_expr))
 
         self.assertEqual(1, len(result))
         for a in result:
@@ -2611,10 +2632,9 @@ class ComplexAlarmQueryTest(AlarmTestBase,
 
     def test_filter_and_orderby(self):
         self.add_some_alarms()
-        result = list(self.conn.query_alarms(filter_expr={"=":
-                                                          {"enabled":
-                                                          True}},
-                                             orderby=[{"name": "asc"}]))
+        result = list(self.alarm_conn.query_alarms(
+            filter_expr={"=": {"enabled": True}},
+            orderby=[{"name": "asc"}]))
         self.assertEqual(2, len(result))
         self.assertEqual(["orange-alert", "red-alert"],
                          [a.name for a in result])
@@ -2635,7 +2655,7 @@ class ComplexAlarmHistoryQueryTest(AlarmTestBase,
         self.prepare_alarm_history()
 
     def prepare_alarm_history(self):
-        alarms = list(self.conn.get_alarms())
+        alarms = list(self.alarm_conn.get_alarms())
         for alarm in alarms:
             i = alarms.index(alarm)
             alarm_change = dict(event_id=
@@ -2649,7 +2669,7 @@ class ComplexAlarmHistoryQueryTest(AlarmTestBase,
                                 timestamp=datetime.datetime(2012, 9, 24,
                                                             7 + i,
                                                             30 + i))
-            self.conn.record_alarm_change(alarm_change=alarm_change)
+            self.alarm_conn.record_alarm_change(alarm_change=alarm_change)
 
             alarm_change2 = dict(event_id=
                                  "16fd2706-8baf-433b-82eb-8c7fada847d%s" % i,
@@ -2662,7 +2682,7 @@ class ComplexAlarmHistoryQueryTest(AlarmTestBase,
                                  timestamp=datetime.datetime(2012, 9, 25,
                                                              10 + i,
                                                              30 + i))
-            self.conn.record_alarm_change(alarm_change=alarm_change2)
+            self.alarm_conn.record_alarm_change(alarm_change=alarm_change2)
 
             alarm_change3 = dict(event_id=
                                  "16fd2706-8baf-433b-82eb-8c7fada847e%s"
@@ -2680,7 +2700,7 @@ class ComplexAlarmHistoryQueryTest(AlarmTestBase,
             if alarm.name == "red-alert":
                 alarm_change3['on_behalf_of'] = 'and-da-girls'
 
-            self.conn.record_alarm_change(alarm_change=alarm_change3)
+            self.alarm_conn.record_alarm_change(alarm_change=alarm_change3)
 
             if alarm.name in ["red-alert", "yellow-alert"]:
                 alarm_change4 = dict(event_id=
@@ -2695,50 +2715,47 @@ class ComplexAlarmHistoryQueryTest(AlarmTestBase,
                                      timestamp=datetime.datetime(2012, 9, 27,
                                                                  10 + i,
                                                                  30 + i))
-                self.conn.record_alarm_change(alarm_change=alarm_change4)
+                self.alarm_conn.record_alarm_change(alarm_change=alarm_change4)
 
     def test_alarm_history_with_no_filter(self):
-        history = list(self.conn.query_alarm_history())
+        history = list(self.alarm_conn.query_alarm_history())
         self.assertEqual(11, len(history))
 
     def test_alarm_history_with_no_filter_and_limit(self):
-        history = list(self.conn.query_alarm_history(limit=3))
+        history = list(self.alarm_conn.query_alarm_history(limit=3))
         self.assertEqual(3, len(history))
 
     def test_alarm_history_with_filter(self):
         history = list(
-            self.conn.query_alarm_history(filter_expr=self.filter_expr))
+            self.alarm_conn.query_alarm_history(filter_expr=self.filter_expr))
         self.assertEqual(2, len(history))
 
     def test_alarm_history_with_filter_and_orderby(self):
-        history = list(
-            self.conn.query_alarm_history(filter_expr=self.filter_expr,
-                                          orderby=[{"timestamp":
-                                                   "asc"}]))
+        history = list(self.alarm_conn.query_alarm_history(
+            filter_expr=self.filter_expr, orderby=[{"timestamp": "asc"}]))
         self.assertEqual([models.AlarmChange.RULE_CHANGE,
                           models.AlarmChange.STATE_TRANSITION],
                          [h.type for h in history])
 
     def test_alarm_history_with_filter_and_orderby_and_limit(self):
-        history = list(
-            self.conn.query_alarm_history(filter_expr=self.filter_expr,
-                                          orderby=[{"timestamp":
-                                                    "asc"}],
-                                          limit=1))
+        history = list(self.alarm_conn.query_alarm_history(
+            filter_expr=self.filter_expr,
+            orderby=[{"timestamp": "asc"}],
+            limit=1))
         self.assertEqual(models.AlarmChange.RULE_CHANGE, history[0].type)
 
     def test_alarm_history_with_on_behalf_of_filter(self):
         filter_expr = {"=": {"on_behalf_of": "and-da-girls"}}
-        history = list(self.conn.query_alarm_history(filter_expr=filter_expr))
+        history = list(self.alarm_conn.query_alarm_history(
+            filter_expr=filter_expr))
         self.assertEqual(1, len(history))
         self.assertEqual("16fd2706-8baf-433b-82eb-8c7fada847e0",
                          history[0].event_id)
 
     def test_alarm_history_with_alarm_id_as_filter(self):
         filter_expr = {"=": {"alarm_id": "r3d"}}
-        history = list(self.conn.query_alarm_history(filter_expr=filter_expr,
-                                                     orderby=[{"timestamp":
-                                                               "asc"}]))
+        history = list(self.alarm_conn.query_alarm_history(
+            filter_expr=filter_expr, orderby=[{"timestamp": "asc"}]))
         self.assertEqual(4, len(history))
         self.assertEqual([models.AlarmChange.CREATION,
                           models.AlarmChange.RULE_CHANGE,
@@ -2767,7 +2784,7 @@ class EventTest(EventTestBase):
         now = datetime.datetime.utcnow()
         m = [models.Event("1", "Foo", now, None),
              models.Event("1", "Zoo", now, [])]
-        problem_events = self.conn.record_events(m)
+        problem_events = self.event_conn.record_events(m)
         self.assertEqual(1, len(problem_events))
         bad = problem_events[0]
         self.assertEqual(models.Event.DUPLICATE, bad[0])
@@ -2797,11 +2814,11 @@ class GetEventTest(EventTestBase):
             now = now + datetime.timedelta(hours=1)
         self.end = now
 
-        self.conn.record_events(self.event_models)
+        self.event_conn.record_events(self.event_models)
 
     def test_generated_is_datetime(self):
         event_filter = storage.EventFilter(self.start, self.end)
-        events = self.conn.get_events(event_filter)
+        events = self.event_conn.get_events(event_filter)
         self.assertEqual(6, len(events))
         for i, event in enumerate(events):
             self.assertIsInstance(event.generated, datetime.datetime)
@@ -2815,7 +2832,7 @@ class GetEventTest(EventTestBase):
 
     def test_simple_get(self):
         event_filter = storage.EventFilter(self.start, self.end)
-        events = self.conn.get_events(event_filter)
+        events = self.event_conn.get_events(event_filter)
         self.assertEqual(6, len(events))
         start_time = None
         for i, type in enumerate(['Foo', 'Bar', 'Zoo']):
@@ -2844,7 +2861,7 @@ class GetEventTest(EventTestBase):
         }
 
         event_filter = storage.EventFilter(self.start, self.end, "Bar")
-        events = self.conn.get_events(event_filter)
+        events = self.event_conn.get_events(event_filter)
         self.assertEqual(2, len(events))
         self.assertEqual(events[0].event_type, "Bar")
         self.assertEqual(events[1].event_type, "Bar")
@@ -2866,7 +2883,7 @@ class GetEventTest(EventTestBase):
         trait_filters = [{'key': 'trait_B', 'integer': 101}]
         event_filter = storage.EventFilter(self.start, self.end,
                                            traits_filter=trait_filters)
-        events = self.conn.get_events(event_filter)
+        events = self.event_conn.get_events(event_filter)
         self.assertEqual(1, len(events))
         self.assertEqual(events[0].event_type, "Bar")
         self.assertEqual(4, len(events[0].traits))
@@ -2876,7 +2893,7 @@ class GetEventTest(EventTestBase):
                          {'key': 'trait_A', 'string': 'my_Foo_text'}]
         event_filter = storage.EventFilter(self.start, self.end,
                                            traits_filter=trait_filters)
-        events = self.conn.get_events(event_filter)
+        events = self.event_conn.get_events(event_filter)
         self.assertEqual(1, len(events))
         self.assertEqual(events[0].event_type, "Foo")
         self.assertEqual(4, len(events[0].traits))
@@ -2886,12 +2903,12 @@ class GetEventTest(EventTestBase):
                          {'key': 'trait_A', 'string': 'my_Zoo_text'}]
         event_filter = storage.EventFilter(self.start, self.end,
                                            traits_filter=trait_filters)
-        events = self.conn.get_events(event_filter)
+        events = self.event_conn.get_events(event_filter)
         self.assertEqual(0, len(events))
 
     def test_get_event_types(self):
         event_types = [e for e in
-                       self.conn.get_event_types()]
+                       self.event_conn.get_event_types()]
 
         self.assertEqual(3, len(event_types))
         self.assertTrue("Bar" in event_types)
@@ -2900,7 +2917,7 @@ class GetEventTest(EventTestBase):
 
     def test_get_trait_types(self):
         trait_types = [tt for tt in
-                       self.conn.get_trait_types("Foo")]
+                       self.event_conn.get_trait_types("Foo")]
         self.assertEqual(4, len(trait_types))
         trait_type_names = map(lambda x: x['name'], trait_types)
         self.assertIn("trait_A", trait_type_names)
@@ -2910,13 +2927,13 @@ class GetEventTest(EventTestBase):
 
     def test_get_trait_types_unknown_event(self):
         trait_types = [tt for tt in
-                       self.conn.get_trait_types("Moo")]
+                       self.event_conn.get_trait_types("Moo")]
         self.assertEqual(0, len(trait_types))
 
     def test_get_traits(self):
-        traits = self.conn.get_traits("Bar")
-        #format results in a way that makes them easier to
-        #work with
+        traits = self.event_conn.get_traits("Bar")
+        # format results in a way that makes them easier to
+        # work with
         trait_dict = {}
         for trait in traits:
             trait_dict[trait.name] = trait.dtype
@@ -2932,8 +2949,7 @@ class GetEventTest(EventTestBase):
                          trait_dict["trait_D"])
 
     def test_get_all_traits(self):
-        traits = self.conn.\
-            get_traits("Foo")
+        traits = self.event_conn.get_traits("Foo")
         traits = [t for t in traits]
         self.assertEqual(8, len(traits))
 
@@ -2943,9 +2959,9 @@ class GetEventTest(EventTestBase):
 
     def test_simple_get_event_no_traits(self):
         new_events = [models.Event("id_notraits", "NoTraits", self.start, [])]
-        bad_events = self.conn.record_events(new_events)
+        bad_events = self.event_conn.record_events(new_events)
         event_filter = storage.EventFilter(self.start, self.end, "NoTraits")
-        events = self.conn.get_events(event_filter)
+        events = self.event_conn.get_events(event_filter)
         self.assertEqual(0, len(bad_events))
         self.assertEqual(1, len(events))
         self.assertEqual(events[0].message_id, "id_notraits")
@@ -2954,7 +2970,7 @@ class GetEventTest(EventTestBase):
 
     def test_simple_get_no_filters(self):
         event_filter = storage.EventFilter(None, None, None)
-        events = self.conn.get_events(event_filter)
+        events = self.event_conn.get_events(event_filter)
         self.assertEqual(6, len(events))
 
     def test_get_by_message_id(self):
@@ -2963,9 +2979,9 @@ class GetEventTest(EventTestBase):
                                    self.start,
                                    [])]
 
-        bad_events = self.conn.record_events(new_events)
+        bad_events = self.event_conn.record_events(new_events)
         event_filter = storage.EventFilter(message_id="id_testid")
-        events = self.conn.get_events(event_filter)
+        events = self.event_conn.get_events(event_filter)
         self.assertEqual(0, len(bad_events))
         self.assertEqual(1, len(events))
         event = events[0]
@@ -2987,4 +3003,4 @@ class BigIntegerTest(tests_db.TestBase,
                           resource_metadata=metadata)
         msg = utils.meter_message_from_counter(
             s, self.CONF.publisher.metering_secret)
-        self.conn.record_metering_data(msg)
+        self.collector_conn.record_metering_data(msg)

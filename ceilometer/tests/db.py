@@ -46,13 +46,28 @@ class TestBase(testscenarios.testcase.WithScenarios, test_base.BaseTestCase):
                 action='ignore',
                 message='.*you must provide a username and password.*')
             try:
-                self.conn = storage.get_connection(self.db_manager.connection)
+                self.alarm_conn = storage.get_connection(
+                    self.db_manager.connection, 'ceilometer.alarm.storage')
+                self.collector_conn = storage.get_connection(
+                    self.db_manager.connection, 'ceilometer.collector.storage')
+                self.event_conn = storage.get_connection(
+                    self.db_manager.connection, 'ceilometer.event.storage')
             except storage.StorageBadVersion as e:
                 self.skipTest(six.text_type(e))
-        self.conn.upgrade()
+        self.alarm_conn.upgrade()
+        self.collector_conn.upgrade()
+        self.event_conn.upgrade()
+
+        def fake_get_connection(url, namespace):
+            if namespace == 'ceilometer.alarm.storage':
+                return self.alarm_conn
+            if namespace == 'ceilometer.collector.storage':
+                return self.collector_conn
+            if namespace == 'ceilometer.event.storage':
+                return self.event_conn
 
         self.useFixture(oslo_mock.Patch('ceilometer.storage.get_connection',
-                                        return_value=self.conn))
+                                        side_effect=fake_get_connection))
 
         self.CONF([], project='ceilometer')
 
@@ -65,8 +80,12 @@ class TestBase(testscenarios.testcase.WithScenarios, test_base.BaseTestCase):
         )
 
     def tearDown(self):
-        self.conn.clear()
-        self.conn = None
+        self.alarm_conn.clear()
+        self.collector_conn.clear()
+        self.event_conn.clear()
+        self.alarm_conn = None
+        self.collector_conn = None
+        self.event_conn = None
         super(TestBase, self).tearDown()
 
 

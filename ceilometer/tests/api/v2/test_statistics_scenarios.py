@@ -51,7 +51,7 @@ class TestMaxProjectVolume(FunctionalTest,
                 s,
                 self.CONF.publisher.metering_secret,
             )
-            self.conn.record_metering_data(msg)
+            self.collector_conn.record_metering_data(msg)
 
     def test_no_time_bounds(self):
         data = self.get_json(self.PATH, q=[{'field': 'project_id',
@@ -149,7 +149,7 @@ class TestMaxResourceVolume(FunctionalTest,
                 s,
                 self.CONF.publisher.metering_secret,
             )
-            self.conn.record_metering_data(msg)
+            self.collector_conn.record_metering_data(msg)
 
     def test_no_time_bounds(self):
         data = self.get_json(self.PATH, q=[{'field': 'resource_id',
@@ -270,7 +270,7 @@ class TestSumProjectVolume(FunctionalTest,
                 s,
                 self.CONF.publisher.metering_secret,
             )
-            self.conn.record_metering_data(msg)
+            self.collector_conn.record_metering_data(msg)
 
     def test_no_time_bounds(self):
         data = self.get_json(self.PATH, q=[{'field': 'project_id',
@@ -370,7 +370,7 @@ class TestSumResourceVolume(FunctionalTest,
                 s,
                 self.CONF.publisher.metering_secret,
             )
-            self.conn.record_metering_data(msg)
+            self.collector_conn.record_metering_data(msg)
 
     def test_no_time_bounds(self):
         data = self.get_json(self.PATH, q=[{'field': 'resource_id',
@@ -527,7 +527,7 @@ class TestGroupByInstance(FunctionalTest,
                 c,
                 self.CONF.publisher.metering_secret,
             )
-            self.conn.record_metering_data(msg)
+            self.collector_conn.record_metering_data(msg)
 
     def test_group_by_user(self):
         data = self.get_json(self.PATH, groupby=['user_id'])
@@ -1283,10 +1283,10 @@ class TestGroupBySource(FunctionalTest,
                 c,
                 self.CONF.publisher.metering_secret,
             )
-            self.conn.record_metering_data(msg)
+            self.collector_conn.record_metering_data(msg)
 
     def tearDown(self):
-        self.conn.clear()
+        self.collector_conn.clear()
         super(TestGroupBySource, self).tearDown()
 
     def test_group_by_source(self):
@@ -1385,7 +1385,7 @@ class TestSelectableAggregates(FunctionalTest,
                 c,
                 self.CONF.publisher.metering_secret,
             )
-            self.conn.record_metering_data(msg)
+            self.collector_conn.record_metering_data(msg)
 
     def _do_test_per_tenant_selectable_standard_aggregate(self,
                                                           aggregate,
@@ -1484,7 +1484,7 @@ class TestSelectableAggregates(FunctionalTest,
                 s,
                 self.CONF.publisher.metering_secret,
             )
-            self.conn.record_metering_data(msg)
+            self.collector_conn.record_metering_data(msg)
 
         agg_args = {'aggregate.func': 'cardinality',
                     'aggregate.param': 'resource_id'}
@@ -1642,7 +1642,7 @@ class TestUnparameterizedAggregates(FunctionalTest,
                 c,
                 self.CONF.publisher.metering_secret,
             )
-            self.conn.record_metering_data(msg)
+            self.collector_conn.record_metering_data(msg)
 
     def test_per_tenant_selectable_unparameterized_aggregate(self):
         agg_args = {'aggregate.func': 'stddev'}

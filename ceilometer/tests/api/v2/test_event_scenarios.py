@@ -58,7 +58,7 @@ class EventTestBase(FunctionalTest,
                              traits=trait_models))
             base += 100
 
-        self.conn.record_events(event_models)
+        self.event_conn.record_events(event_models)
 
 
 class TestEventTypeAPI(EventTestBase):

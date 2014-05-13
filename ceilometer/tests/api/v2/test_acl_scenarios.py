@@ -105,7 +105,7 @@ class TestAPIACL(FunctionalTest,
             msg = utils.meter_message_from_counter(
                 cnt,
                 self.CONF.publisher.metering_secret)
-            self.conn.record_metering_data(msg)
+            self.collector_conn.record_metering_data(msg)
 
     def get_json(self, path, expect_errors=False, headers=None,
                  q=[], **params):

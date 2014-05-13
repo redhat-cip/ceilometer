@@ -59,7 +59,7 @@ class TestBase(db_test_base.TestBase):
 
         @self.app.before_request
         def attach_storage_connection():
-            flask.request.storage_conn = self.conn
+            flask.request.storage_conn = self.collector_conn
 
     def get(self, path, headers=None, **kwds):
         if kwds:

@@ -31,8 +31,6 @@ from ceilometer import utils
 
 LOG = log.getLogger(__name__)
 
-STORAGE_ENGINE_NAMESPACE = 'ceilometer.storage'
-
 OLD_STORAGE_OPTS = [
     cfg.StrOpt('database_connection',
                secret=True,
@@ -57,6 +55,13 @@ cfg.CONF.import_opt('connection',
                     'ceilometer.openstack.common.db.options',
                     group='database')
 
+cfg.CONF.import_opt('database_connection', 'ceilometer.alarm.storage.base',
+                    group='alarm')
+cfg.CONF.import_opt('database_connection', 'ceilometer.collector.storage.base',
+                    group='collector')
+cfg.CONF.import_opt('database_connection', 'ceilometer.event.storage.base',
+                    group='event')
+
 
 class StorageBadVersion(Exception):
     """Error raised when the storage backend version is not good enough."""
@@ -67,20 +72,33 @@ class StorageBadAggregate(Exception):
     code = 400
 
 
-def get_connection_from_config(conf):
+def get_connections_from_config(conf):
+    conns = {}
+    for group in ['alarm', 'event', 'collector']:
+        conns[group] = get_connection_from_config(conf, group)
+    return conns
+
+
+def get_connection_from_config(conf, group):
     if conf.database_connection:
         conf.set_override('connection', conf.database_connection,
                           group='database')
-    return get_connection(conf.database.connection)
+
+    cfg_group = getattr(conf, group, None)
+    if cfg_group and cfg_group.database_connection:
+        url = cfg_group.database_connection
+    else:
+        url = conf.database.connection
+    return get_connection(url, "ceilometer.%s.storage" % group)
 
 
-def get_connection(url):
+def get_connection(url, namespace):
     """Return an open connection to the database."""
     engine_name = urlparse.urlparse(url).scheme
     LOG.debug(_('looking for %(name)r driver in %(namespace)r') % (
               {'name': engine_name,
-               'namespace': STORAGE_ENGINE_NAMESPACE}))
-    mgr = driver.DriverManager(STORAGE_ENGINE_NAMESPACE, engine_name)
+               'namespace': namespace}))
+    mgr = driver.DriverManager(namespace, engine_name)
     return mgr.driver(url)
 
 

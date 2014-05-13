@@ -60,7 +60,8 @@ class TestComputeDurationByResource(tests_api.TestBase,
                                       duration_start=start,
                                       duration_end=end,
                                       groupby=None)
-        return mock.patch.object(self.conn, 'get_meter_statistics',
+        return mock.patch.object(self.collector_conn,
+                                 'get_meter_statistics',
                                  return_value=statitics)
 
     def _invoke_api(self):

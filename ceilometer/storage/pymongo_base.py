@@ -22,6 +22,9 @@
 import pymongo
 import weakref
 
+from ceilometer.alarm.storage import base as alarm_storage
+from ceilometer.collector.storage import base as collector_storage
+from ceilometer.event.storage import base as event_storage
 from ceilometer.openstack.common.gettextutils import _
 from ceilometer.openstack.common import log
 from ceilometer.openstack.common import network_utils
@@ -140,10 +143,12 @@ COMMON_AVAILABLE_CAPABILITIES = {
 }
 
 
-class Connection(base.Connection):
+class Connection(alarm_storage.Connection,
+                 event_storage.Connection,
+                 collector_storage.Connection):
     """Base Connection class for MongoDB and DB2 drivers.
     """
-    CAPABILITIES = utils.update_nested(base.Connection.CAPABILITIES,
+    CAPABILITIES = utils.update_nested(base.get_merged_capabilities(),
                                        COMMON_AVAILABLE_CAPABILITIES)
 
     def get_users(self, source=None):
@@ -468,8 +473,8 @@ class Connection(base.Connection):
     @staticmethod
     def _decode_matching_metadata(matching_metadata):
         if isinstance(matching_metadata, dict):
-            #note(sileht): keep compatibility with alarm
-            #with matching_metadata as a dict
+            # note(sileht): keep compatibility with alarm
+            # with matching_metadata as a dict
             return matching_metadata
         else:
             new_matching_metadata = {}

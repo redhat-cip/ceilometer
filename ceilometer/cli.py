@@ -25,7 +25,7 @@ import sys
 import eventlet
 # NOTE(jd) We need to monkey patch the socket and select module for,
 # at least, oslo.messaging, otherwise everything's blocked on its
-# first read() or select(), thread need to be patched too, because
+# first read() or select(), thread need to be patched too, because
 # oslo.messaging use threading.local
 eventlet.monkey_patch(socket=True, select=True, thread=True)
 
@@ -108,14 +108,17 @@ def collector_service():
 
 def storage_dbsync():
     service.prepare_service()
-    storage.get_connection_from_config(cfg.CONF).upgrade()
+    conns = storage.get_connections_from_config(cfg.CONF)
+    for name in conns:
+        conns[name].upgrade()
 
 
 def storage_expirer():
     service.prepare_service()
     if cfg.CONF.database.time_to_live > 0:
         LOG.debug(_("Clearing expired metering data"))
-        storage_conn = storage.get_connection_from_config(cfg.CONF)
+        storage_conn = storage.get_connection_from_config(cfg.CONF,
+                                                          'collector')
         storage_conn.clear_expired_metering_data(
             cfg.CONF.database.time_to_live)
     else:

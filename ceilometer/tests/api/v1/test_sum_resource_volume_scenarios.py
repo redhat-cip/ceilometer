@@ -52,7 +52,7 @@ class TestSumResourceVolume(tests_api.TestBase,
                 s,
                 self.CONF.publisher.metering_secret,
             )
-            self.conn.record_metering_data(msg)
+            self.collector_conn.record_metering_data(msg)
 
     def test_no_time_bounds(self):
         data = self.get('/resources/resource-id/meters/volume.size/volume/sum')

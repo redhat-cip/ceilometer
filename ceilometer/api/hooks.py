@@ -36,11 +36,11 @@ class ConfigHook(hooks.PecanHook):
 
 class DBHook(hooks.PecanHook):
 
-    def __init__(self, storage_connection):
-        self.storage_connection = storage_connection
+    def __init__(self, storage_connections):
+        self.storage_connections = storage_connections
 
     def before(self, state):
-        state.request.storage_conn = self.storage_connection
+        state.request.storage_conns = self.storage_connections
 
 
 class PipelineHook(hooks.PecanHook):
