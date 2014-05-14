@@ -24,7 +24,7 @@ import uuid
 
 from ceilometer.alarm.evaluator import combination
 from ceilometer.openstack.common import timeutils
-from ceilometer.storage import models
+from ceilometer.alarm.storage import models
 from ceilometer.tests.alarm.evaluator import base
 from ceilometerclient import exc
 from ceilometerclient.v2 import alarms

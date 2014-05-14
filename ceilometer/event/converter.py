@@ -24,10 +24,10 @@ from oslo.config import cfg
 import six
 import yaml
 
+from ceilometer.event.storage import models
 from ceilometer.openstack.common.gettextutils import _
 from ceilometer.openstack.common import log
 from ceilometer.openstack.common import timeutils
-from ceilometer.storage import models
 
 OPTS = [
     cfg.StrOpt('definitions_cfg_file',

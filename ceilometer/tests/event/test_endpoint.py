@@ -23,9 +23,9 @@ import oslo.messaging
 from stevedore import extension
 
 from ceilometer.event import endpoint as event_endpoint
+from ceilometer.event.storage import models
 from ceilometer import messaging
 from ceilometer.openstack.common.fixture import config
-from ceilometer.storage import models
 from ceilometer.tests import base as tests_base
 
 TEST_NOTICE_CTXT = {

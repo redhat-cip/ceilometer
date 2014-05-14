@@ -18,13 +18,16 @@
 
 import datetime
 
+from ceilometer.alarm.storage import models as alarm_models
+from ceilometer.event.storage import models as event_models
+from ceilometer.collector.storage import models as collector_models
 from ceilometer.openstack.common import test
-from ceilometer.storage import models
+from ceilometer.storage import base
 
 
-class FakeModel(models.Model):
+class FakeModel(base.Model):
     def __init__(self, arg1, arg2):
-        models.Model.__init__(self, arg1=arg1, arg2=arg2)
+        base.Model.__init__(self, arg1=arg1, arg2=arg2)
 
 
 class ModelTest(test.BaseTestCase):
@@ -56,7 +59,7 @@ class ModelTest(test.BaseTestCase):
                          d)
 
     def test_event_repr_no_traits(self):
-        x = models.Event("1", "name", "now", None)
+        x = event_models.Event("1", "name", "now", None)
         self.assertEqual("<Event: 1, name, now, >", repr(x))
 
     def test_get_field_names_of_sample(self):
@@ -67,7 +70,7 @@ class ModelTest(test.BaseTestCase):
                          "message_signature", "recorded_at"]
 
         self.assertEqual(set(sample_fields),
-                         set(models.Sample.get_field_names()))
+                         set(collector_models.Sample.get_field_names()))
 
     def test_get_field_names_of_alarm(self):
         alarm_fields = ["alarm_id", "type", "enabled", "name", "description",
@@ -77,7 +80,7 @@ class ModelTest(test.BaseTestCase):
                         "time_constraints"]
 
         self.assertEqual(set(alarm_fields),
-                         set(models.Alarm.get_field_names()))
+                         set(alarm_models.Alarm.get_field_names()))
 
     def test_get_field_names_of_alarmchange(self):
         alarmchange_fields = ["event_id", "alarm_id", "type", "detail",
@@ -85,27 +88,27 @@ class ModelTest(test.BaseTestCase):
                               "timestamp"]
 
         self.assertEqual(set(alarmchange_fields),
-                         set(models.AlarmChange.get_field_names()))
+                         set(alarm_models.AlarmChange.get_field_names()))
 
 
 class TestTraitModel(test.BaseTestCase):
 
     def test_convert_value(self):
-        v = models.Trait.convert_value(
-            models.Trait.INT_TYPE, '10')
+        v = event_models.Trait.convert_value(
+            event_models.Trait.INT_TYPE, '10')
         self.assertEqual(10, v)
         self.assertIsInstance(v, int)
-        v = models.Trait.convert_value(
-            models.Trait.FLOAT_TYPE, '10')
+        v = event_models.Trait.convert_value(
+            event_models.Trait.FLOAT_TYPE, '10')
         self.assertEqual(10.0, v)
         self.assertIsInstance(v, float)
 
-        v = models.Trait.convert_value(
-            models.Trait.DATETIME_TYPE, '2013-08-08 21:05:37.123456')
+        v = event_models.Trait.convert_value(
+            event_models.Trait.DATETIME_TYPE, '2013-08-08 21:05:37.123456')
         self.assertEqual(datetime.datetime(2013, 8, 8, 21, 5, 37, 123456), v)
         self.assertIsInstance(v, datetime.datetime)
 
-        v = models.Trait.convert_value(
-            models.Trait.TEXT_TYPE, 10)
+        v = event_models.Trait.convert_value(
+            event_models.Trait.TEXT_TYPE, 10)
         self.assertEqual("10", v)
         self.assertIsInstance(v, str)

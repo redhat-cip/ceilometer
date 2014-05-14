@@ -35,7 +35,7 @@ from ceilometer.openstack.common import log
 from ceilometer.openstack.common import timeutils
 from ceilometer import storage
 from ceilometer.storage import base
-from ceilometer.storage import models
+from ceilometer.collector.storage import models as collector_models
 from ceilometer.storage import pymongo_base
 from ceilometer import utils
 
@@ -267,7 +267,7 @@ class Connection(pymongo_base.Connection):
                       start_timestamp=None, start_timestamp_op=None,
                       end_timestamp=None, end_timestamp_op=None,
                       metaquery={}, resource=None, pagination=None):
-        """Return an iterable of models.Resource instances
+        """Return an iterable of collector_models.Resource instances
 
         :param user: Optional ID for user that owns the resource.
         :param project: Optional ID for project that owns the resource.
@@ -322,17 +322,18 @@ class Connection(pymongo_base.Connection):
             last_ts = latest_meter['timestamp']
             first_ts = r_meters[-1]['timestamp']
 
-            yield models.Resource(resource_id=latest_meter['resource_id'],
-                                  project_id=latest_meter['project_id'],
-                                  first_sample_timestamp=first_ts,
-                                  last_sample_timestamp=last_ts,
-                                  source=latest_meter['source'],
-                                  user_id=latest_meter['user_id'],
-                                  metadata=latest_meter['resource_metadata'])
+            yield collector_models.Resource(
+                resource_id=latest_meter['resource_id'],
+                project_id=latest_meter['project_id'],
+                first_sample_timestamp=first_ts,
+                last_sample_timestamp=last_ts,
+                source=latest_meter['source'],
+                user_id=latest_meter['user_id'],
+                metadata=latest_meter['resource_metadata'])
 
     def get_meter_statistics(self, sample_filter, period=None, groupby=None,
                              aggregate=None):
-        """Return an iterable of models.Statistics instance containing meter
+        """Return an iterable of collector_models.Statistics instance containing meter
         statistics described by the query parameters.
 
         The filter must have a meter value set.
@@ -380,12 +381,13 @@ class Connection(pymongo_base.Connection):
                     'seconds': (periods * period) % self.SECONDS_IN_A_DAY}
 
         for key, grouped_meters in itertools.groupby(meters, key=_group_key):
-            stat = models.Statistics(unit=None,
-                                     min=sys.maxint, max=-sys.maxint,
-                                     avg=0, sum=0, count=0,
-                                     period=0, period_start=0, period_end=0,
-                                     duration=0, duration_start=0,
-                                     duration_end=0, groupby=None)
+            stat = collector_models.Statistics(unit=None,
+                                               min=sys.maxint, max=-sys.maxint,
+                                               avg=0, sum=0, count=0,
+                                               period=0, period_start=0,
+                                               period_end=0,
+                                               duration=0, duration_start=0,
+                                               duration_end=0, groupby=None)
 
             for meter in grouped_meters:
                 stat.unit = meter.get('counter_unit', '')

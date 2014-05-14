@@ -22,11 +22,11 @@ from ceilometerclient.v2 import alarms
 import mock
 
 from ceilometer.alarm import rpc as rpc_alarm
+from ceilometer.alarm.storage import models
 from ceilometer import messaging
 from ceilometer.openstack.common.fixture import mockpatch
 from ceilometer.openstack.common import test
 from ceilometer.openstack.common import timeutils
-from ceilometer.storage import models
 
 
 class TestRPCAlarmNotifier(test.BaseTestCase):

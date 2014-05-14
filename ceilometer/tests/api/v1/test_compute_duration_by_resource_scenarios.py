@@ -23,7 +23,7 @@ import datetime
 import mock
 
 from ceilometer.openstack.common import timeutils
-from ceilometer.storage import models
+from ceilometer.collector.storage import models
 from ceilometer.tests import api as tests_api
 from ceilometer.tests import db as tests_db
 

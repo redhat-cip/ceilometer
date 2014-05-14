@@ -21,10 +21,10 @@ import mock
 import wsme
 
 from ceilometer.api.controllers import v2 as api
+from ceilometer.collector.storage import models
 from ceilometer.openstack.common.fixture.mockpatch import PatchObject
 from ceilometer.openstack.common import test
 from ceilometer.openstack.common import timeutils
-from ceilometer import storage
 from ceilometer.tests import base as tests_base
 
 
@@ -184,7 +184,7 @@ class TestQueryToKwArgs(tests_base.BaseTestCase):
         q = [api.Query(field='user_id',
                        op='eq',
                        value='uid')]
-        kwargs = api._query_to_kwargs(q, storage.SampleFilter.__init__)
+        kwargs = api._query_to_kwargs(q, models.SampleFilter.__init__)
         self.assertIn('user', kwargs)
         self.assertEqual(1, len(kwargs))
         self.assertEqual('uid', kwargs['user'])
@@ -205,7 +205,7 @@ class TestQueryToKwArgs(tests_base.BaseTestCase):
              api.Query(field='meter',
                        op='eq',
                        value='meter_name')]
-        kwargs = api._query_to_kwargs(q, storage.SampleFilter.__init__)
+        kwargs = api._query_to_kwargs(q, models.SampleFilter.__init__)
         self.assertEqual(5, len(kwargs))
         self.assertEqual('uid', kwargs['user'])
         self.assertEqual('pid', kwargs['project'])
@@ -222,7 +222,7 @@ class TestQueryToKwArgs(tests_base.BaseTestCase):
              api.Query(field='timestamp',
                        op='gt',
                        value=str(ts_start))]
-        kwargs = api._query_to_kwargs(q, storage.SampleFilter.__init__)
+        kwargs = api._query_to_kwargs(q, models.SampleFilter.__init__)
         self.assertEqual(4, len(kwargs))
         self.assertTimestampEqual(kwargs['start'], ts_start)
         self.assertTimestampEqual(kwargs['end'], ts_end)
@@ -236,7 +236,7 @@ class TestQueryToKwArgs(tests_base.BaseTestCase):
              api.Query(field='resource_metadata.id',
                        op='eq',
                        value='meta_id')]
-        kwargs = api._query_to_kwargs(q, storage.SampleFilter.__init__)
+        kwargs = api._query_to_kwargs(q, models.SampleFilter.__init__)
         self.assertEqual(1, len(kwargs))
         self.assertEqual(2, len(kwargs['metaquery']))
         self.assertEqual(20, kwargs['metaquery']['metadata.size'])
@@ -257,7 +257,7 @@ class TestQueryToKwArgs(tests_base.BaseTestCase):
                 wsme.exc.InvalidInput,
                 api._query_to_kwargs,
                 queries,
-                storage.SampleFilter.__init__)
+                models.SampleFilter.__init__)
 
     def test_sample_filter_invalid_field(self):
         q = [api.Query(field='invalid',
@@ -265,7 +265,7 @@ class TestQueryToKwArgs(tests_base.BaseTestCase):
                        value='20')]
         self.assertRaises(
             wsme.exc.UnknownArgument,
-            api._query_to_kwargs, q, storage.SampleFilter.__init__)
+            api._query_to_kwargs, q, models.SampleFilter.__init__)
 
     def test_sample_filter_invalid_op(self):
         q = [api.Query(field='user_id',
@@ -273,7 +273,7 @@ class TestQueryToKwArgs(tests_base.BaseTestCase):
                        value='20')]
         self.assertRaises(
             wsme.exc.InvalidInput,
-            api._query_to_kwargs, q, storage.SampleFilter.__init__)
+            api._query_to_kwargs, q, models.SampleFilter.__init__)
 
     def test_sample_filter_timestamp_invalid_op(self):
         ts_start = timeutils.utcnow()
@@ -282,7 +282,7 @@ class TestQueryToKwArgs(tests_base.BaseTestCase):
                        value=str(ts_start))]
         self.assertRaises(
             wsme.exc.InvalidInput,
-            api._query_to_kwargs, q, storage.SampleFilter.__init__)
+            api._query_to_kwargs, q, models.SampleFilter.__init__)
 
     def test_sample_filter_exclude_internal(self):
         queries = [api.Query(field=f,
@@ -295,7 +295,7 @@ class TestQueryToKwArgs(tests_base.BaseTestCase):
             self.assertRaises(wsme.exc.ClientSideError,
                               api._query_to_kwargs,
                               queries,
-                              storage.SampleFilter.__init__,
+                              models.SampleFilter.__init__,
                               internal_keys=['on_behalf_of'])
 
     def test_sample_filter_self_always_excluded(self):
@@ -305,7 +305,7 @@ class TestQueryToKwArgs(tests_base.BaseTestCase):
         with mock.patch('pecan.request') as request:
             request.headers.return_value = {'X-ProjectId': 'foobar'}
             kwargs = api._query_to_kwargs(queries,
-                                          storage.SampleFilter.__init__)
+                                          models.SampleFilter.__init__)
             self.assertFalse('self' in kwargs)
 
     def test_sample_filter_translation(self):
@@ -318,6 +318,6 @@ class TestQueryToKwArgs(tests_base.BaseTestCase):
         with mock.patch('pecan.request') as request:
             request.headers.return_value = {'X-ProjectId': 'foobar'}
             kwargs = api._query_to_kwargs(queries,
-                                          storage.SampleFilter.__init__)
+                                          models.SampleFilter.__init__)
             for o in ['user', 'project', 'resource']:
                 self.assertEqual('fake_%s_id' % o, kwargs.get(o))

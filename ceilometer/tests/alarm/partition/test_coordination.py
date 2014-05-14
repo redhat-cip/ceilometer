@@ -26,11 +26,11 @@ import mock
 from six import moves
 
 from ceilometer.alarm.partition import coordination
+from ceilometer.alarm.storage import models
 from ceilometer import messaging
 from ceilometer.openstack.common.fixture import config
 from ceilometer.openstack.common import test
 from ceilometer.openstack.common import timeutils
-from ceilometer.storage import models
 
 
 class TestCoordinate(test.BaseTestCase):

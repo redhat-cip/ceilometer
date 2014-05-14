@@ -39,7 +39,7 @@ from ceilometer.openstack.common import log
 from ceilometer.openstack.common import timeutils
 from ceilometer import storage
 from ceilometer.storage import base
-from ceilometer.storage import models
+from ceilometer.collector.storage import models as collector_models
 from ceilometer.storage import pymongo_base
 from ceilometer import utils
 
@@ -708,7 +708,7 @@ class Connection(pymongo_base.Connection):
                                         start_timestamp, start_timestamp_op,
                                         end_timestamp, end_timestamp_op,
                                         metaquery, resource):
-        """Return an iterable of models.Resource instances constrained
+        """Return an iterable of collector_models.Resource instances constrained
            by sample timestamp.
 
         :param query: project/user/source query
@@ -756,7 +756,7 @@ class Connection(pymongo_base.Connection):
         try:
             for r in self.db[out].find(sort=sort_instructions):
                 resource = r['value']
-                yield models.Resource(
+                yield collector_models.Resource(
                     resource_id=r['_id'],
                     user_id=resource['user_id'],
                     project_id=resource['project_id'],
@@ -768,7 +768,7 @@ class Connection(pymongo_base.Connection):
             self.db[out].drop()
 
     def _get_floating_resources(self, query, metaquery, resource):
-        """Return an iterable of models.Resource instances unconstrained
+        """Return an iterable of collector_models.Resource instances unconstrained
            by timestamp.
 
         :param query: project/user/source query
@@ -787,7 +787,7 @@ class Connection(pymongo_base.Connection):
         sort_instructions = self._build_sort_instructions(sort_keys)[0]
 
         for r in self.db.resource.find(query, sort=sort_instructions):
-            yield models.Resource(
+            yield collector_models.Resource(
                 resource_id=r['_id'],
                 user_id=r['user_id'],
                 project_id=r['project_id'],
@@ -802,7 +802,7 @@ class Connection(pymongo_base.Connection):
                       start_timestamp=None, start_timestamp_op=None,
                       end_timestamp=None, end_timestamp_op=None,
                       metaquery={}, resource=None, pagination=None):
-        """Return an iterable of models.Resource instances
+        """Return an iterable of collector_models.Resource instances
 
         :param user: Optional ID for user that owns the resource.
         :param project: Optional ID for project that owns the resource.
@@ -867,7 +867,7 @@ class Connection(pymongo_base.Connection):
 
     def get_meter_statistics(self, sample_filter, period=None, groupby=None,
                              aggregate=None):
-        """Return an iterable of models.Statistics instance containing meter
+        """Return an iterable of collector_models.Statistics instance containing meter
         statistics described by the query parameters.
 
         The filter must have a meter value set.
@@ -964,4 +964,4 @@ class Connection(pymongo_base.Connection):
         stats_args['period_end'] = result['period_end']
         stats_args['groupby'] = (dict(
             (g, result['groupby'][g]) for g in groupby) if groupby else None)
-        return models.Statistics(**stats_args)
+        return collector_models.Statistics(**stats_args)

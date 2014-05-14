@@ -29,7 +29,8 @@ from ceilometer.openstack.common.gettextutils import _
 from ceilometer.openstack.common import log
 from ceilometer.openstack.common import network_utils
 from ceilometer.storage import base
-from ceilometer.storage import models
+from ceilometer.alarm.storage import models as alarm_models
+from ceilometer.collector.storage import models as collector_models
 from ceilometer import utils
 
 LOG = log.getLogger(__name__)
@@ -179,7 +180,7 @@ class Connection(alarm_storage.Connection,
 
     def get_meters(self, user=None, project=None, resource=None, source=None,
                    metaquery={}, pagination=None):
-        """Return an iterable of models.Meter instances
+        """Return an iterable of collector_models.Meter instances
 
         :param user: Optional ID for user that owns the resource.
         :param project: Optional ID for project that owns the resource.
@@ -205,7 +206,7 @@ class Connection(alarm_storage.Connection,
 
         for r in self.db.resource.find(q):
             for r_meter in r['meter']:
-                yield models.Meter(
+                yield collector_models.Meter(
                     name=r_meter['counter_name'],
                     type=r_meter['counter_type'],
                     # Return empty string if 'counter_unit' is not valid for
@@ -231,7 +232,7 @@ class Connection(alarm_storage.Connection,
         del stored_alarm['_id']
         self._ensure_encapsulated_rule_format(stored_alarm)
         self._ensure_time_constraints(stored_alarm)
-        return models.Alarm(**stored_alarm)
+        return alarm_models.Alarm(**stored_alarm)
 
     create_alarm = update_alarm
 
@@ -337,12 +338,14 @@ class Connection(alarm_storage.Connection,
                                             None)
 
     def query_samples(self, filter_expr=None, orderby=None, limit=None):
-        return self._retrieve_data(filter_expr, orderby, limit, models.Meter)
+        return self._retrieve_data(filter_expr, orderby, limit,
+                                   collector_models.Meter)
 
     def query_alarms(self, filter_expr=None, orderby=None, limit=None):
         """Return an iterable of model.Alarm objects.
         """
-        return self._retrieve_data(filter_expr, orderby, limit, models.Alarm)
+        return self._retrieve_data(filter_expr, orderby, limit,
+                                   alarm_models.Alarm)
 
     def query_alarm_history(self, filter_expr=None, orderby=None, limit=None):
         """Return an iterable of model.AlarmChange objects.
@@ -350,7 +353,7 @@ class Connection(alarm_storage.Connection,
         return self._retrieve_data(filter_expr,
                                    orderby,
                                    limit,
-                                   models.AlarmChange)
+                                   alarm_models.AlarmChange)
 
     def _retrieve_data(self, filter_expr, orderby, limit, model):
         if limit == 0:
@@ -363,9 +366,9 @@ class Connection(alarm_storage.Connection,
         if filter_expr is not None:
             query_filter = transformer.transform_filter(filter_expr)
 
-        retrieve = {models.Meter: self._retrieve_samples,
-                    models.Alarm: self._retrieve_alarms,
-                    models.AlarmChange: self._retrieve_alarm_changes}
+        retrieve = {collector_models.Meter: self._retrieve_samples,
+                    alarm_models.Alarm: self._retrieve_alarms,
+                    alarm_models.AlarmChange: self._retrieve_alarm_changes}
         return retrieve[model](query_filter, orderby_filter, limit)
 
     def _retrieve_samples(self, query, orderby, limit):
@@ -386,7 +389,7 @@ class Connection(alarm_storage.Connection,
             s['counter_unit'] = s.get('counter_unit', '')
             # Tolerate absence of recorded_at in older datapoints
             s['recorded_at'] = s.get('recorded_at')
-            yield models.Sample(**s)
+            yield collector_models.Sample(**s)
 
     def _retrieve_alarms(self, query_filter, orderby, limit):
         if limit is not None:
@@ -402,7 +405,7 @@ class Connection(alarm_storage.Connection,
             del a['_id']
             self._ensure_encapsulated_rule_format(a)
             self._ensure_time_constraints(a)
-            yield models.Alarm(**a)
+            yield alarm_models.Alarm(**a)
 
     def _retrieve_alarm_changes(self, query_filter, orderby, limit):
         if limit is not None:
@@ -417,7 +420,7 @@ class Connection(alarm_storage.Connection,
             ah = {}
             ah.update(alarm_history)
             del ah['_id']
-            yield models.AlarmChange(**ah)
+            yield alarm_models.AlarmChange(**ah)
 
     @classmethod
     def _ensure_encapsulated_rule_format(cls, alarm):

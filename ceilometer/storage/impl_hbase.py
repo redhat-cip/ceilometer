@@ -31,15 +31,15 @@ import bson.json_util
 import happybase
 
 from ceilometer.alarm.storage import base as alarm_storage
+from ceilometer.alarm.storage import models as alarm_models
 from ceilometer.collector.storage import base as collector_storage
+from ceilometer.collector.storage import models as collector_models
 from ceilometer.event.storage import base as event_storage
 from ceilometer.openstack.common.gettextutils import _
 from ceilometer.openstack.common import log
 from ceilometer.openstack.common import network_utils
 from ceilometer.openstack.common import timeutils
-from ceilometer import storage
 from ceilometer.storage import base
-from ceilometer.storage import models
 from ceilometer import utils
 
 LOG = log.getLogger(__name__)
@@ -233,7 +233,7 @@ class Connection(alarm_storage.Connection,
             alarm_table = conn.table(self.ALARM_TABLE)
             alarm_table.put(_id, alarm_to_store)
             stored_alarm = deserialize_entry(alarm_table.row(_id))[0]
-        return models.Alarm(**stored_alarm)
+        return alarm_models.Alarm(**stored_alarm)
 
     create_alarm = update_alarm
 
@@ -256,7 +256,7 @@ class Connection(alarm_storage.Connection,
             gen = alarm_table.scan(filter=q)
             for ignored, data in gen:
                 stored_alarm = deserialize_entry(data)[0]
-                yield models.Alarm(**stored_alarm)
+                yield alarm_models.Alarm(**stored_alarm)
 
     def get_alarm_changes(self, alarm_id, on_behalf_of,
                           user=None, project=None, type=None,
@@ -275,7 +275,7 @@ class Connection(alarm_storage.Connection,
                                            row_stop=end_row)
             for ignored, data in gen:
                 stored_entry = deserialize_entry(data)[0]
-                yield models.AlarmChange(**stored_entry)
+                yield alarm_models.AlarmChange(**stored_entry)
 
     def record_alarm_change(self, alarm_change):
         """Record alarm change event.
@@ -369,7 +369,7 @@ class Connection(alarm_storage.Connection,
                       start_timestamp=None, start_timestamp_op=None,
                       end_timestamp=None, end_timestamp_op=None,
                       metaquery={}, resource=None, pagination=None):
-        """Return an iterable of models.Resource instances
+        """Return an iterable of collector_models.Resource instances
 
         :param user: Optional ID for user that owns the resource.
         :param project: Optional ID for project that owns the resource.
@@ -385,7 +385,7 @@ class Connection(alarm_storage.Connection,
         if pagination:
             raise NotImplementedError('Pagination not implemented')
 
-        sample_filter = storage.SampleFilter(
+        sample_filter = collector_models.SampleFilter(
             user=user, project=project,
             start=start_timestamp, start_timestamp_op=start_timestamp_op,
             end=end_timestamp, end_timestamp_op=end_timestamp_op,
@@ -415,7 +415,7 @@ class Connection(alarm_storage.Connection,
                 latest_data = meter_rows[-1]
                 min_ts = meter_rows[0][0]['timestamp']
                 max_ts = latest_data[0]['timestamp']
-                yield models.Resource(
+                yield collector_models.Resource(
                     resource_id=resource_id,
                     first_sample_timestamp=min_ts,
                     last_sample_timestamp=max_ts,
@@ -427,7 +427,7 @@ class Connection(alarm_storage.Connection,
 
     def get_meters(self, user=None, project=None, resource=None, source=None,
                    metaquery={}, pagination=None):
-        """Return an iterable of models.Meter instances
+        """Return an iterable of collector_models.Meter instances
 
         :param user: Optional ID for user that owns the resource.
         :param project: Optional ID for project that owns the resource.
@@ -469,10 +469,10 @@ class Connection(alarm_storage.Connection,
                     meter_dict.update({'source':
                                        m_source if m_source else None})
 
-                    yield models.Meter(**meter_dict)
+                    yield collector_models.Meter(**meter_dict)
 
     def get_samples(self, sample_filter, limit=None):
-        """Return an iterable of models.Sample instances.
+        """Return an iterable of collector_models.Sample instances.
 
         :param sample_filter: Filter.
         :param limit: Maximum number of results to return.
@@ -492,7 +492,7 @@ class Connection(alarm_storage.Connection,
                         limit -= 1
                 d_meter = deserialize_entry(meter)[0]
                 d_meter['message']['recorded_at'] = d_meter['recorded_at']
-                yield models.Sample(**d_meter['message'])
+                yield collector_models.Sample(**d_meter['message'])
 
     @staticmethod
     def _update_meter_stats(stat, meter):
@@ -520,7 +520,7 @@ class Connection(alarm_storage.Connection,
 
     def get_meter_statistics(self, sample_filter, period=None, groupby=None,
                              aggregate=None):
-        """Return an iterable of models.Statistics instances containing meter
+        """Return an iterable of collector_models.Statistics instances containing meter
         statistics described by the query parameters.
 
         The filter must have a meter value set.
@@ -581,19 +581,19 @@ class Connection(alarm_storage.Connection,
                     period_end = period_start + datetime.timedelta(
                         0, period)
                 results.append(
-                    models.Statistics(unit='',
-                                      count=0,
-                                      min=0,
-                                      max=0,
-                                      avg=0,
-                                      sum=0,
-                                      period=period,
-                                      period_start=period_start,
-                                      period_end=period_end,
-                                      duration=None,
-                                      duration_start=None,
-                                      duration_end=None,
-                                      groupby=None)
+                    collector_models.Statistics(unit='',
+                                                count=0,
+                                                min=0,
+                                                max=0,
+                                                avg=0,
+                                                sum=0,
+                                                period=period,
+                                                period_start=period_start,
+                                                period_end=period_end,
+                                                duration=None,
+                                                duration_start=None,
+                                                duration_end=None,
+                                                groupby=None)
                 )
             self._update_meter_stats(results[-1], meter[0])
         return results

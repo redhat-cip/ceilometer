@@ -30,7 +30,7 @@ from mock import patch
 
 from ceilometer.openstack.common import timeutils
 from ceilometer.storage import impl_sqlalchemy
-from ceilometer.storage import models
+from ceilometer.event.storage import models
 from ceilometer.storage.sqlalchemy import models as sql_models
 
 from ceilometer.tests import base as test_base

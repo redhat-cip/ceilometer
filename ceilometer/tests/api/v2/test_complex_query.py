@@ -23,9 +23,10 @@ import jsonschema
 import mock
 import wsme
 
+from ceilometer.alarm import storage as alarm_storage
 from ceilometer.api.controllers import v2 as api
 from ceilometer.openstack.common import test
-from ceilometer import storage as storage
+from ceilometer.collector import storage as collector_storage
 
 
 class FakeComplexQuery(api.ValidatedComplexQuery):
@@ -49,12 +50,12 @@ class TestComplexQuery(test.BaseTestCase):
         super(TestComplexQuery, self).setUp()
         self.useFixture(fixtures.MonkeyPatch(
             'pecan.response', mock.MagicMock()))
-        self.query = FakeComplexQuery(storage.models.Sample,
+        self.query = FakeComplexQuery(collector_storage.models.Sample,
                                       sample_name_mapping,
                                       True)
-        self.query_alarm = FakeComplexQuery(storage.models.Alarm)
+        self.query_alarm = FakeComplexQuery(alarm_storage.models.Alarm)
         self.query_alarmchange = FakeComplexQuery(
-            storage.models.AlarmChange)
+            alarm_storage.models.AlarmChange)
 
     def test_replace_isotime_utc(self):
         filter_expr = {"=": {"timestamp": "2013-12-05T19:38:29Z"}}
@@ -235,7 +236,7 @@ class TestComplexQuery(test.BaseTestCase):
 class TestFilterSyntaxValidation(test.BaseTestCase):
     def setUp(self):
         super(TestFilterSyntaxValidation, self).setUp()
-        self.query = FakeComplexQuery(storage.models.Sample,
+        self.query = FakeComplexQuery(collector_storage.models.Sample,
                                       sample_name_mapping,
                                       True)
 

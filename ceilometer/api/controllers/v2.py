@@ -11,6 +11,7 @@
 #          Julien Danjou <julien@danjou.info>
 #          Ildiko Vancsa <ildiko.vancsa@ericsson.com>
 #          Balazs Gibizer <balazs.gibizer@ericsson.com>
+#          Mehdi Abaakouk <mehdi.abaakouk@enovance.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -53,7 +54,9 @@ from ceilometer.openstack.common import log
 from ceilometer.openstack.common import strutils
 from ceilometer.openstack.common import timeutils
 from ceilometer import sample
-from ceilometer import storage
+from ceilometer.alarm import storage as alarm_storage
+from ceilometer.collector import storage as collector_storage
+from ceilometer.event import storage as event_storage
 from ceilometer import utils
 
 
@@ -817,9 +820,10 @@ class MeterController(rest.RestController):
         if limit and limit < 0:
             raise ClientSideError(_("Limit must be positive"))
         conn = pecan.request.storage_conns.get('collector')
-        kwargs = _query_to_kwargs(q, storage.SampleFilter.__init__)
+        kwargs = _query_to_kwargs(
+            q, collector_storage.models.SampleFilter.__init__)
         kwargs['meter'] = self.meter_name
-        f = storage.SampleFilter(**kwargs)
+        f = collector_storage.models.SampleFilter(**kwargs)
         return [OldSample.from_db_model(e)
                 for e in conn.get_samples(f, limit=limit)
                 ]
@@ -897,9 +901,10 @@ class MeterController(rest.RestController):
         if period and period < 0:
             raise ClientSideError(_("Period must be positive."))
 
-        kwargs = _query_to_kwargs(q, storage.SampleFilter.__init__)
+        kwargs = _query_to_kwargs(
+            q, collector_storage.models.SampleFilter.__init__)
         kwargs['meter'] = self.meter_name
-        f = storage.SampleFilter(**kwargs)
+        f = collector_storage.models.SampleFilter(**kwargs)
         g = _validate_groupby_fields(groupby)
 
         aggregate = utils.uniq(aggregate, ['func', 'param'])
@@ -1071,8 +1076,9 @@ class SamplesController(rest.RestController):
         """
         if limit and limit < 0:
             raise ClientSideError(_("Limit must be positive"))
-        kwargs = _query_to_kwargs(q, storage.SampleFilter.__init__)
-        f = storage.SampleFilter(**kwargs)
+        kwargs = _query_to_kwargs(
+            q, collector_storage.models.SampleFilter.__init__)
+        f = collector_storage.models.SampleFilter(**kwargs)
         return map(Sample.from_db_model,
                    pecan.request.storage_conns.get(
                        'collector').get_samples(f, limit=limit))
@@ -1083,7 +1089,7 @@ class SamplesController(rest.RestController):
 
         :param sample_id: the id of the sample
         """
-        f = storage.SampleFilter(message_id=sample_id)
+        f = collector_storage.models.SampleFilter(message_id=sample_id)
 
         samples = list(pecan.request.storage_conns.get(
             'collector').get_samples(f))
@@ -1520,7 +1526,8 @@ class AlarmThresholdRule(_Base):
         # evaluator will construct timestamp bounds for the sequence of
         # statistics queries as the sliding evaluation window advances
         # over time.
-        _validate_query(threshold_rule.query, storage.SampleFilter.__init__,
+        _validate_query(threshold_rule.query,
+                        collector_storage.models.SampleFilter.__init__,
                         allow_timestamps=False)
         return threshold_rule
 
@@ -1737,7 +1744,7 @@ class Alarm(_Base):
             # the query if not already present
             alarm.threshold_rule.query = _sanitize_query(
                 alarm.threshold_rule.query,
-                storage.SampleFilter.__init__,
+                collector_storage.models.SampleFilter.__init__,
                 on_behalf_of=alarm.project_id
             )
         elif alarm.combination_rule:
@@ -1862,7 +1869,7 @@ class AlarmController(rest.RestController):
         self.alarm_conn = pecan.request.storage_conns.get('alarm')
         auth_project = acl.get_limited_to_project(pecan.request.headers)
         alarms = list(self.alarm_conn.get_alarms(alarm_id=self._id,
-                                           project=auth_project))
+                                                 project=auth_project))
         if not alarms:
             raise EntityNotFound(_('Alarm'), self._id)
         return alarms[0]
@@ -1870,7 +1877,7 @@ class AlarmController(rest.RestController):
     def _record_change(self, data, now, on_behalf_of=None, type=None):
         if not cfg.CONF.alarm.record_history:
             return
-        type = type or storage.models.AlarmChange.RULE_CHANGE
+        type = type or alarm_storage.models.AlarmChange.RULE_CHANGE
         scrubbed_data = utils.stringify_timestamps(data)
         detail = json.dumps(scrubbed_data)
         user_id = pecan.request.headers.get('X-User-Id')
@@ -1943,10 +1950,11 @@ class AlarmController(rest.RestController):
                 raise ClientSideError(_('Cannot specify alarm %s itself in '
                                         'combination rule') % self._id)
 
-        old_alarm = Alarm.from_db_model(alarm_in).as_dict(storage.models.Alarm)
-        updated_alarm = data.as_dict(storage.models.Alarm)
+        old_alarm = Alarm.from_db_model(alarm_in).as_dict(
+            alarm_storage.models.Alarm)
+        updated_alarm = data.as_dict(alarm_storage.models.Alarm)
         try:
-            alarm_in = storage.models.Alarm(**updated_alarm)
+            alarm_in = alarm_storage.models.Alarm(**updated_alarm)
         except Exception:
             LOG.exception(_("Error while putting alarm: %s") % updated_alarm)
             raise ClientSideError(_("Alarm incorrect"))
@@ -1966,10 +1974,10 @@ class AlarmController(rest.RestController):
         # ensure alarm exists before deleting
         alarm = self._alarm()
         self.alarm_conn.delete_alarm(alarm.alarm_id)
-        change = Alarm.from_db_model(alarm).as_dict(storage.models.Alarm)
+        change = Alarm.from_db_model(alarm).as_dict(alarm_storage.models.Alarm)
         self._record_change(change,
                             timeutils.utcnow(),
-                            type=storage.models.AlarmChange.DELETION)
+                            type=alarm_storage.models.AlarmChange.DELETION)
 
     # TODO(eglynn): add pagination marker to signature once overall
     #               API support for pagination is finalized
@@ -2007,8 +2015,9 @@ class AlarmController(rest.RestController):
         alarm.state_timestamp = now
         alarm = self.alarm_conn.update_alarm(alarm)
         change = {'state': alarm.state}
-        self._record_change(change, now, on_behalf_of=alarm.project_id,
-                            type=storage.models.AlarmChange.STATE_TRANSITION)
+        self._record_change(
+            change, now, on_behalf_of=alarm.project_id,
+            type=alarm_storage.models.AlarmChange.STATE_TRANSITION)
         return alarm.state
 
     @wsme_pecan.wsexpose(state_kind_enum)
@@ -2030,7 +2039,7 @@ class AlarmsController(rest.RestController):
     def _record_creation(self, conn, data, alarm_id, now):
         if not cfg.CONF.alarm.record_history:
             return
-        type = storage.models.AlarmChange.CREATION
+        type = alarm_storage.models.AlarmChange.CREATION
         scrubbed_data = utils.stringify_timestamps(data)
         detail = json.dumps(scrubbed_data)
         user_id = pecan.request.headers.get('X-User-Id')
@@ -2084,7 +2093,7 @@ class AlarmsController(rest.RestController):
         data.timestamp = now
         data.state_timestamp = now
 
-        change = data.as_dict(storage.models.Alarm)
+        change = data.as_dict(alarm_storage.models.Alarm)
 
         # make sure alarms are unique by name per project.
         alarms = list(conn.get_alarms(name=data.name,
@@ -2095,7 +2104,7 @@ class AlarmsController(rest.RestController):
                 status_code=409)
 
         try:
-            alarm_in = storage.models.Alarm(**change)
+            alarm_in = alarm_storage.models.Alarm(**change)
         except Exception:
             LOG.exception(_("Error while posting alarm: %s") % change)
             raise ClientSideError(_("Alarm incorrect"))
@@ -2191,9 +2200,9 @@ class Event(_Base):
         if isinstance(t, Trait):
             return t
         value = (six.text_type(t.value)
-                 if not t.dtype == storage.models.Trait.DATETIME_TYPE
+                 if not t.dtype == event_storage.models.Trait.DATETIME_TYPE
                  else t.value.isoformat())
-        type = storage.models.Trait.get_name_by_type(t.dtype)
+        type = event_storage.models.Trait.get_name_by_type(t.dtype)
         return Trait(name=t.name, type=type, value=value)
 
     def set_traits(self, traits):
@@ -2254,7 +2263,8 @@ def _event_query_to_event_filter(q):
         else:
             traits_filter.append({"key": i.field,
                                   i.type: i._get_value_as_type()})
-    return storage.EventFilter(traits_filter=traits_filter, **evt_model_filter)
+    return event_storage.models.EventFilter(traits_filter=traits_filter,
+                                            **evt_model_filter)
 
 
 class TraitsController(rest.RestController):
@@ -2281,7 +2291,7 @@ class TraitsController(rest.RestController):
         :param event_type: Event type to filter traits by
         """
         conn = pecan.request.storage_conns.get('event')
-        get_trait_name = storage.models.Trait.get_name_by_type
+        get_trait_name = event_storage.models.Trait.get_name_by_type
         return [TraitDescription(name=t['name'],
                                  type=get_trait_name(t['data_type']))
                 for t in conn.get_trait_types(event_type)]
@@ -2331,7 +2341,7 @@ class EventsController(rest.RestController):
         :param message_id: Message ID of the Event to be returned
         """
         conn = pecan.request.storage_conns.get('event')
-        event_filter = storage.EventFilter(message_id=message_id)
+        event_filter = event_storage.models.EventFilter(message_id=message_id)
         events = conn.get_events(event_filter)
         if not events:
             raise EntityNotFound(_("Event"), message_id)
@@ -2365,7 +2375,7 @@ class QuerySamplesController(rest.RestController):
                                "volume": "counter_volume"}
 
         query = ValidatedComplexQuery(body,
-                                      storage.models.Sample,
+                                      collector_storage.models.Sample,
                                       sample_name_mapping,
                                       metadata_allowed=True)
         query.validate(visibility_field="project_id")
@@ -2386,7 +2396,7 @@ class QueryAlarmHistoryController(rest.RestController):
         :param body: Query rules for the alarm history to be returned.
         """
         query = ValidatedComplexQuery(body,
-                                      storage.models.AlarmChange)
+                                      alarm_storage.models.AlarmChange)
         query.validate(visibility_field="on_behalf_of")
         conn = pecan.request.storage_conns.get('alarm')
         return [AlarmChange.from_db_model(s)
@@ -2407,7 +2417,7 @@ class QueryAlarmsController(rest.RestController):
         :param body: Query rules for the alarms to be returned.
         """
         query = ValidatedComplexQuery(body,
-                                      storage.models.Alarm)
+                                      alarm_storage.models.Alarm)
         query.validate(visibility_field="project_id")
         conn = pecan.request.storage_conns.get('alarm')
         return [Alarm.from_db_model(s)

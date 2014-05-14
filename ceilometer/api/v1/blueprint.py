@@ -93,7 +93,7 @@ from ceilometer.openstack.common.gettextutils import _
 from ceilometer.openstack.common import log
 from ceilometer.openstack.common import timeutils
 
-from ceilometer import storage
+from ceilometer.collector.storage import models
 
 from ceilometer.api import acl
 
@@ -317,7 +317,7 @@ def _list_users(source=None):
     """Return a list of user names.
     """
     # TODO(jd) it might be better to return the real list of users that are
-    # belonging to the project, but that's not provided by the storage
+    # belonging to the project, but that's not provided by the models
     # drivers for now
     if acl.get_limited_to_project(flask.request.headers):
         users = [flask.request.headers.get('X-User-id')]
@@ -396,7 +396,7 @@ def _list_samples(meter,
     to maintain API compatibilty.
     """
     q_ts = _get_query_timestamps(flask.request.args)
-    f = storage.SampleFilter(
+    f = models.SampleFilter(
         user=user,
         project=project,
         source=source,
@@ -554,7 +554,7 @@ def compute_duration_by_resource(resource, meter):
 
     # Query the database for the interval of timestamps
     # within the desired range.
-    f = storage.SampleFilter(
+    f = models.SampleFilter(
         meter=meter,
         project=acl.get_limited_to_project(flask.request.headers),
         resource=resource,
@@ -605,7 +605,7 @@ def compute_duration_by_resource(resource, meter):
 def _get_statistics(stats_type, meter=None, resource=None, project=None):
     q_ts = _get_query_timestamps(flask.request.args)
 
-    f = storage.SampleFilter(
+    f = models.SampleFilter(
         meter=meter,
         project=project,
         resource=resource,
